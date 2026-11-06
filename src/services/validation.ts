@@ -98,9 +98,19 @@ export const assignAffiliationsInputSchema = z.object({
   activityIds: z.array(z.string().trim().min(1)).default([]),
 });
 
+export const createServiceInputSchema = z.object({
+  name: z.string().trim().min(2, "Service name must be at least 2 characters."),
+  serviceType: z.enum(["SUNDAY", "MIDWEEK", "SPECIAL"]).default("SUNDAY"),
+  serviceDate: z.string().trim().min(8, "Service date is required (YYYY-MM-DD)."),
+  startTime: z.string().trim().min(1).default("8:30 AM"),
+  location: z.string().trim().min(1).default("Grace Sanctuary Auditorium"),
+  usherStation: z.string().trim().min(1).default("Door A (Main Entrance)"),
+});
+
 export type RegisterInput = z.input<typeof registerInputSchema>;
 export type LoginInput = z.input<typeof loginInputSchema>;
 export type UpdateProfileInput = z.input<typeof updateProfileInputSchema>;
 export type DepartmentInput = z.input<typeof departmentInputSchema>;
 export type ActivityInput = z.input<typeof activityInputSchema>;
 export type AssignAffiliationsInput = z.input<typeof assignAffiliationsInputSchema>;
+export type CreateServiceInput = z.input<typeof createServiceInputSchema>;

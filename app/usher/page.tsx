@@ -1,34 +1,96 @@
 "use client";
 
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
-const ME_USHER_QUERY = gql`
-  query MeUsher {
+const USHER_DASHBOARD_QUERY = gql`
+  query UsherDashboard {
     me {
       id
       fullName
       phone
       role
     }
+    activeService {
+      id
+      name
+      serviceType
+      serviceDate
+      startTime
+      location
+      usherStation
+      status
+    }
   }
 `;
 
-interface MeUsherData {
+const SERVICE_QR_QUERY = gql`
+  query ServiceQr($serviceId: ID!) {
+    serviceQr(serviceId: $serviceId) {
+      serviceId
+      token
+      checkinUrl
+      slot
+      expiresInSeconds
+    }
+  }
+`;
+
+const CLOSE_SERVICE_MUTATION = gql`
+  mutation CloseUsherService($serviceId: ID!) {
+    closeService(serviceId: $serviceId) {
+      id
+      status
+      closedAt
+    }
+  }
+`;
+
+interface UsherDashboardData {
   me: {
     id: string;
     fullName: string;
     phone: string;
     role: "MEMBER" | "USHER" | "ADMIN";
   } | null;
+  activeService: {
+    id: string;
+    name: string;
+    serviceType: string;
+    serviceDate: string;
+    startTime: string;
+    location: string;
+    usherStation: string;
+    status: "SCHEDULED" | "OPEN" | "CLOSED";
+  } | null;
+}
+
+interface ServiceQrData {
+  serviceQr: {
+    serviceId: string;
+    token: string;
+    checkinUrl: string;
+    slot: number;
+    expiresInSeconds: number;
+  };
 }
 
 export default function UsherPage(): ReactNode {
-  const { data } = useQuery<MeUsherData>(ME_USHER_QUERY, {
+  const { data } = useQuery<UsherDashboardData>(USHER_DASHBOARD_QUERY, {
     fetchPolicy: "network-only",
   });
   const member = data?.me ?? null;
+  const activeService = data?.activeService ?? null;
+  const activeServiceId = activeService?.id ?? "65f000000000000000000100";
+
+  const { data: qrData, refetch: refetchQr } = useQuery<ServiceQrData>(SERVICE_QR_QUERY, {
+    variables: { serviceId: activeService?.id ?? "" },
+    skip: !activeService?.id || (member?.role !== "USHER" && member?.role !== "ADMIN"),
+    fetchPolicy: "network-only",
+  });
+
+  const [closeServiceMutation] = useMutation(CLOSE_SERVICE_MUTATION);
 
   const [timeLeft, setTimeLeft] = useState<number>(42);
   const [projectorOpen, setProjectorOpen] = useState<boolean>(false);
@@ -36,12 +98,26 @@ export default function UsherPage(): ReactNode {
   const [sessionClosed, setSessionClosed] = useState<boolean>(false);
 
   useEffect(() => {
+    if (qrData?.serviceQr?.expiresInSeconds) {
+      setTimeLeft(qrData.serviceQr.expiresInSeconds);
+    }
+  }, [qrData]);
+
+  useEffect(() => {
     if (sessionClosed) return;
     const timer = window.setInterval(() => {
-      setTimeLeft((prev) => (prev <= 1 ? 45 : prev - 1));
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (activeService?.id) {
+            void refetchQr();
+          }
+          return 60;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [sessionClosed]);
+  }, [sessionClosed, activeService?.id, refetchQr]);
 
   const usherName = member?.fullName ?? "Brother Emmanuel Kalu";
   const usherInitials = usherName
@@ -50,6 +126,8 @@ export default function UsherPage(): ReactNode {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const checkinHref = qrData?.serviceQr?.checkinUrl ?? `/checkin/${activeServiceId}?t=preview`;
 
   return (
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
@@ -263,13 +341,21 @@ export default function UsherPage(): ReactNode {
                   Dynamic door-sync enabled · Anti-tamper token active
                 </span>
               </div>
+
+              <Link
+                href={checkinHref}
+                className="mt-space-sm inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm font-semibold transition-colors"
+              >
+                <span className="material-symbols-outlined text-[15px]">qr_code_scanner</span>
+                <span>Simulate Member QR Scan</span>
+              </Link>
             </div>
           </div>
 
           {/* Operational Action Stack (Ushers) */}
           <div className="flex flex-col gap-space-sm mt-space-lg">
-            <button
-              type="button"
+            <Link
+              href="/services"
               className="h-12 w-full rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center justify-between px-space-md shadow-sm transition-all active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center gap-space-sm">
@@ -279,10 +365,10 @@ export default function UsherPage(): ReactNode {
               <span className="px-2.5 py-0.5 rounded-full bg-surface-container-lowest/20 font-label-sm text-label-sm font-semibold">
                 312
               </span>
-            </button>
+            </Link>
 
-            <button
-              type="button"
+            <Link
+              href="/services"
               className="h-12 w-full rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg flex items-center justify-between px-space-md shadow-sm transition-all active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center gap-space-sm">
@@ -294,7 +380,7 @@ export default function UsherPage(): ReactNode {
               <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
                 arrow_forward
               </span>
-            </button>
+            </Link>
 
             <button
               type="button"
@@ -410,6 +496,11 @@ export default function UsherPage(): ReactNode {
                 <button
                   type="button"
                   onClick={() => {
+                    if (activeService?.id) {
+                      void closeServiceMutation({
+                        variables: { serviceId: activeService.id },
+                      });
+                    }
                     setSessionClosed(true);
                     setCloseModalOpen(false);
                   }}

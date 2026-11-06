@@ -5,6 +5,27 @@ export const typeDefs = `#graphql
     ADMIN
   }
 
+  enum ServiceType {
+    SUNDAY
+    MIDWEEK
+    SPECIAL
+  }
+
+  enum ServiceStatus {
+    SCHEDULED
+    OPEN
+    CLOSED
+  }
+
+  enum CheckinPreviewState {
+    READY
+    UNAUTHENTICATED
+    EXPIRED_TOKEN
+    INVALID_TOKEN
+    SERVICE_NOT_OPEN
+    ALREADY_MARKED
+  }
+
   type PingResult {
     status: String!
     timestamp: String!
@@ -49,6 +70,36 @@ export const typeDefs = `#graphql
     currentStreak: Int!
     longestStreak: Int!
     consentGivenAt: String!
+  }
+
+  type Service {
+    id: ID!
+    name: String!
+    serviceType: ServiceType!
+    serviceDate: String!
+    startTime: String!
+    location: String!
+    usherStation: String!
+    status: ServiceStatus!
+    openedAt: String
+    closedAt: String
+  }
+
+  type ServiceQrPayload {
+    serviceId: ID!
+    serviceName: String!
+    status: ServiceStatus!
+    token: String!
+    checkinPath: String!
+    expiresInSeconds: Int!
+    slot: Int!
+  }
+
+  type CheckinPreview {
+    state: CheckinPreviewState!
+    service: Service!
+    member: Member
+    message: String!
   }
 
   type AuthPayload {
@@ -109,6 +160,15 @@ export const typeDefs = `#graphql
     status: String
   }
 
+  input CreateServiceInput {
+    name: String!
+    serviceType: ServiceType
+    serviceDate: String!
+    startTime: String
+    location: String
+    usherStation: String
+  }
+
   type Query {
     ping: PingResult!
     me: Member
@@ -116,6 +176,10 @@ export const typeDefs = `#graphql
     departments: [Department!]!
     activities: [Activity!]!
     members(filter: MembersFilterInput): [Member!]!
+    services: [Service!]!
+    activeService: Service!
+    serviceQr(serviceId: ID!): ServiceQrPayload!
+    checkinPreview(serviceId: ID!, token: String!): CheckinPreview!
     adminOnlyCheck: String!
   }
 
@@ -127,5 +191,8 @@ export const typeDefs = `#graphql
     createDepartment(input: DepartmentInput!): Department!
     createActivity(input: ActivityInput!): Activity!
     assignMemberAffiliations(input: AssignAffiliationsInput!): Member!
+    createService(input: CreateServiceInput!): Service!
+    openService(serviceId: ID!): Service!
+    closeService(serviceId: ID!): Service!
   }
 `;

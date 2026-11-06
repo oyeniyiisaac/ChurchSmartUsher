@@ -10,6 +10,7 @@ import {
 } from "../src/db/models";
 import { connectToDatabase } from "../src/db/mongoose";
 import { formatMemberCode } from "../src/services/profile";
+import { generateServiceQrSecret } from "../src/services/qr";
 import { normalizePhoneNumber } from "../src/services/validation";
 
 const DEFAULT_PASSWORD = "ChangeMe123!";
@@ -283,12 +284,13 @@ async function runSeed(): Promise<void> {
     );
   }
 
-  // Seed 8 closed Sunday services
+  // Seed 8 Sunday services (most recent OPEN, previous 7 CLOSED)
   const baseSunday = new Date("2026-11-01T08:00:00.000Z");
   for (let i = 0; i < 8; i++) {
     const serviceDateObj = new Date(baseSunday.getTime() - i * 7 * 24 * 60 * 60 * 1000);
     const serviceDate = serviceDateObj.toISOString().slice(0, 10);
     const name = `Sunday First Service (${serviceDate})`;
+    const isLatest = i === 0;
 
     await Service.findOneAndUpdate(
       { serviceDate, serviceType: "SUNDAY" },
@@ -297,9 +299,13 @@ async function runSeed(): Promise<void> {
           name,
           serviceType: "SUNDAY",
           serviceDate,
-          status: "CLOSED",
+          startTime: "08:00 AM",
+          location: "Main Sanctuary",
+          usherStation: "Door A · Main Auditorium",
+          status: isLatest ? "OPEN" : "CLOSED",
+          qrSecret: generateServiceQrSecret(),
           openedAt: serviceDateObj,
-          closedAt: new Date(serviceDateObj.getTime() + 3 * 60 * 60 * 1000),
+          closedAt: isLatest ? null : new Date(serviceDateObj.getTime() + 3 * 60 * 60 * 1000),
         },
       },
       { upsert: true, new: true },

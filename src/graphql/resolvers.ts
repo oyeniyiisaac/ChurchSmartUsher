@@ -19,9 +19,22 @@ import {
   type MembersFilterInput,
   updateMyProfile,
 } from "@/services/profile";
+import {
+  type CheckinPreviewPayload,
+  closeService,
+  createService,
+  getActiveService,
+  getCheckinPreview,
+  getServiceQr,
+  listServices,
+  openService,
+  type ServiceInfo,
+  type ServiceQrPayload,
+} from "@/services/service";
 import type {
   ActivityInput,
   AssignAffiliationsInput,
+  CreateServiceInput,
   DepartmentInput,
   LoginInput,
   RegisterInput,
@@ -82,6 +95,31 @@ export const resolvers = {
     ): Promise<AuthenticatedMember[]> => {
       requireRole(context.member ?? null, ["USHER", "ADMIN"]);
       return listMembers(args.filter);
+    },
+
+    services: async (): Promise<ServiceInfo[]> => {
+      return listServices();
+    },
+
+    activeService: async (): Promise<ServiceInfo> => {
+      return getActiveService();
+    },
+
+    serviceQr: async (
+      _parent: unknown,
+      args: { serviceId: string },
+      context: GraphQLContext,
+    ): Promise<ServiceQrPayload> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return getServiceQr(args.serviceId);
+    },
+
+    checkinPreview: async (
+      _parent: unknown,
+      args: { serviceId: string; token: string },
+      context: GraphQLContext,
+    ): Promise<CheckinPreviewPayload> => {
+      return getCheckinPreview(args.serviceId, args.token, context.member ?? null);
     },
 
     adminOnlyCheck: (_parent: unknown, _args: unknown, context: GraphQLContext): string => {
@@ -149,6 +187,33 @@ export const resolvers = {
     ): Promise<AuthenticatedMember> => {
       requireRole(context.member ?? null, ["ADMIN"]);
       return assignMemberAffiliations(args.input);
+    },
+
+    createService: async (
+      _parent: unknown,
+      args: { input: CreateServiceInput },
+      context: GraphQLContext,
+    ): Promise<ServiceInfo> => {
+      requireRole(context.member ?? null, ["ADMIN"]);
+      return createService(args.input);
+    },
+
+    openService: async (
+      _parent: unknown,
+      args: { serviceId: string },
+      context: GraphQLContext,
+    ): Promise<ServiceInfo> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return openService(args.serviceId);
+    },
+
+    closeService: async (
+      _parent: unknown,
+      args: { serviceId: string },
+      context: GraphQLContext,
+    ): Promise<ServiceInfo> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return closeService(args.serviceId);
     },
   },
 };

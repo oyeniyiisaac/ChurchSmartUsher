@@ -313,7 +313,7 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
             </Link>
             <Link
               className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/usher"
+              href="/services"
             >
               <span className="material-symbols-outlined text-[20px]">event_available</span>
               <span className="font-label-md text-label-md">Services</span>
