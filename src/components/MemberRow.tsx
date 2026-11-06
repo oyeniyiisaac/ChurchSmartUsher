@@ -1,90 +1,55 @@
-export type MemberRowProps = {
+import type { ReactNode } from "react";
+
+export interface MemberRowProps {
   name: string;
-  department: string;
-  time: string;
-  avatarUrl?: string;
+  department?: string;
+  time?: string;
   isGuest?: boolean;
-  isManual?: boolean;
-};
+  rightSlot?: ReactNode;
+}
 
 export function MemberRow({
   name,
-  department,
+  department = "General Congregation",
   time,
-  avatarUrl,
   isGuest = false,
-  isManual = false,
-}: MemberRowProps) {
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  rightSlot,
+}: MemberRowProps): ReactNode {
+  const initial = name.trim().charAt(0).toUpperCase() || "M";
 
   return (
-    <div className="member-row" style={{ justifyContent: "space-between", padding: "10px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt={name}
-            style={{
-              width: "42px",
-              height: "42px",
-              borderRadius: "50%",
-              objectFit: "cover",
-            }}
-          />
-        ) : (
-          <div className="member-avatar" aria-hidden="true">
-            {initial}
-          </div>
-        )}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <strong style={{ fontSize: "15px", color: "var(--ink)" }}>{name}</strong>
+    <div className="member-row p-space-sm bg-surface-container-lowest rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+      <div className="member-info flex items-center gap-space-sm min-w-0">
+        <div
+          className="member-avatar w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed font-bold flex items-center justify-center shrink-0 text-sm"
+          aria-hidden="true"
+        >
+          {initial}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <div className="member-name font-label-md text-label-md text-on-surface font-semibold truncate flex items-center gap-1.5">
+            <span>{name}</span>
             {isGuest && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  padding: "2px 8px",
-                  borderRadius: "999px",
-                  background: "#e8f4fc",
-                  color: "#1d6f9a",
-                }}
-              >
+              <span className="pill-warning px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[11px]">
                 Guest
               </span>
             )}
-            {isManual && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  padding: "2px 8px",
-                  borderRadius: "999px",
-                  background: "#fff3c4",
-                  color: "#806b19",
-                }}
-              >
-                Manual
-              </span>
-            )}
           </div>
-          <span style={{ fontSize: "13px", color: "var(--muted)", marginTop: "2px" }}>
-            {department || "General Assembly"} · {time}
-          </span>
+          <div className="member-meta font-body-sm text-[12px] text-on-surface-variant truncate">
+            {department}
+          </div>
         </div>
       </div>
-      <span
-        style={{
-          width: "10px",
-          height: "10px",
-          borderRadius: "50%",
-          background: "var(--brand)",
-          display: "inline-block",
-        }}
-        title="Present"
-        aria-label="Present indicator"
-      />
+
+      <div className="row-actions flex items-center gap-2 shrink-0">
+        {time && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-tertiary-container font-semibold font-label-sm text-label-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container" />
+            {time}
+          </span>
+        )}
+        {rightSlot}
+      </div>
     </div>
   );
 }

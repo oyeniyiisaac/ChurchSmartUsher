@@ -1,49 +1,81 @@
-export type StreakCardProps = {
+import type { ReactNode } from "react";
+
+export interface StreakCardProps {
   currentStreak: number;
   longestStreak: number;
-  className?: string;
-};
+  label?: string;
+}
 
-export function StreakCard({ currentStreak, longestStreak, className = "" }: StreakCardProps) {
-  const getBadgeMessage = (streak: number) => {
-    if (streak >= 52) return "52 Weeks Faithful — Pillar of the House";
-    if (streak >= 12) return "12 Weeks Faithful — Steady Believer";
-    if (streak >= 4) return "4 Weeks Faithful — Building Momentum";
-    return "Keep showing up, one service at a time.";
-  };
-
+export function StreakCard({
+  currentStreak,
+  longestStreak,
+  label = "Attendance Streak",
+}: StreakCardProps): ReactNode {
   return (
-    <section
-      className={`card streak-card ${className}`.trim()}
-      aria-label="Attendance consistency streak"
-    >
-      <div>
+    <section className="streak-card w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md flex flex-col space-y-space-md">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-space-sm">
+          <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shadow-sm shrink-0">
+            <span
+              className="material-symbols-outlined text-[22px] material-icon-filled"
+              aria-hidden="true"
+            >
+              local_fire_department
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
+              {currentStreak} Sundays in a row
+            </span>
+            <span className="font-label-sm text-label-sm text-secondary font-medium">
+              {label} · Faithful Worshipper Level
+            </span>
+          </div>
+        </div>
         <span
-          style={{
-            display: "inline-block",
-            fontSize: "12px",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "#f6ca57",
-            marginBottom: "6px",
-          }}
+          className="material-symbols-outlined text-secondary-container text-[28px] material-icon-filled"
+          aria-hidden="true"
         >
-          Consistency Streak
+          military_tech
         </span>
-        <h2 style={{ color: "#ffffff", fontSize: "1.35rem", margin: "0 0 6px" }}>
-          {currentStreak} {currentStreak === 1 ? "Service" : "Services"} in a row
-        </h2>
-        <p style={{ margin: "0 0 4px", color: "#c8e3d3", fontSize: "0.95rem" }}>
-          {getBadgeMessage(currentStreak)}
-        </p>
-        <p style={{ margin: 0, color: "#9fcbb2", fontSize: "0.85rem" }}>
-          Personal best: {longestStreak} consecutive services
+      </div>
+
+      <div className="px-space-sm py-2 rounded-md bg-surface-container text-on-surface">
+        <p className="font-body-sm text-body-sm italic text-center">
+          “Consistent in fellowship, prayer, and uplifting worship.”
         </p>
       </div>
-      <strong className="streak-number" aria-label={`Current streak: ${currentStreak}`}>
-        {currentStreak}
-      </strong>
+
+      <div className="grid grid-cols-3 gap-2 text-center pt-1">
+        <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
+          <span className="font-headline-md text-headline-md font-bold text-primary">
+            {currentStreak}
+          </span>
+          <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
+            Current Streak
+          </span>
+        </div>
+        <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
+          <span className="font-headline-md text-headline-md font-bold text-secondary">
+            {longestStreak}
+          </span>
+          <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
+            Best Streak
+          </span>
+        </div>
+        <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
+          <span className="font-headline-md text-headline-md font-bold text-tertiary-container">
+            3/4
+          </span>
+          <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
+            This Month
+          </span>
+        </div>
+      </div>
+
+      <p className="font-label-sm text-label-sm text-on-surface-variant text-right">
+        Personal best: {longestStreak} consecutive services
+      </p>
     </section>
   );
 }

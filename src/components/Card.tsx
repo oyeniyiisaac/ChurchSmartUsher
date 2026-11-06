@@ -1,17 +1,17 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-export type CardProps = HTMLAttributes<HTMLElement> & {
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  variant?: "default" | "elevated" | "accent";
-};
+}
 
-export function Card({ children, variant = "default", className = "", ...props }: CardProps) {
-  const variantClass =
-    variant === "elevated" ? "card-elevated" : variant === "accent" ? "card-accent" : "";
+export function Card({ className = "", children, ...props }: CardProps): ReactNode {
+  const classes = ["card bg-surface-container-lowest rounded-xl shadow-sm p-space-lg", className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <section className={`card ${variantClass} ${className}`.trim()} {...props}>
+    <div className={classes} {...props}>
       {children}
-    </section>
+    </div>
   );
 }

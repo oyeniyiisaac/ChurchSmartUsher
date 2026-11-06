@@ -1,0 +1,116 @@
+import { randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+
+import { getEnv } from "@/config/env";
+import { Member, type MemberDocument, Session, type UserRole } from "@/db/models";
+import { connectToDatabase } from "@/db/mongoose";
+import { hashSessionToken } from "./password";
+
+export type AuthenticatedMember = {
+  id: string;
+  fullName: string;
+  phone: string;
+  email?: string | null;
+  role: UserRole;
+  department: string;
+  activities: string[];
+  memberCode: string;
+  currentStreak: number;
+  longestStreak: number;
+};
+
+export function toAuthenticatedMember(doc: MemberDocument): AuthenticatedMember {
+  return {
+    id: doc._id.toString(),
+    fullName: doc.fullName,
+    phone: doc.phone,
+    email: doc.email ?? null,
+    role: doc.role,
+    department: doc.department,
+    activities: doc.activities ?? [],
+    memberCode: doc.memberCode,
+    currentStreak: doc.currentStreak,
+    longestStreak: doc.longestStreak,
+  };
+}
+
+export async function createSession(memberId: string): Promise<{ token: string; expiresAt: Date }> {
+  await connectToDatabase();
+  const env = getEnv();
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + env.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+  await Session.create({
+    tokenHash: hashSessionToken(token),
+    memberId,
+    expiresAt,
+  });
+
+  return { token, expiresAt };
+}
+
+export async function setSessionCookie(token: string, expiresAt: Date): Promise<void> {
+  const env = getEnv();
+  const cookieStore = await cookies();
+  cookieStore.set(env.SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: env.NODE_ENV === "production",
+    expires: expiresAt,
+    path: "/",
+  });
+}
+
+export async function clearSessionCookie(): Promise<void> {
+  const env = getEnv();
+  const cookieStore = await cookies();
+  cookieStore.delete(env.SESSION_COOKIE_NAME);
+}
+
+export async function revokeCurrentSession(): Promise<boolean> {
+  const env = getEnv();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(env.SESSION_COOKIE_NAME)?.value;
+
+  if (token) {
+    try {
+      await connectToDatabase();
+      await Session.deleteOne({ tokenHash: hashSessionToken(token) });
+    } catch {
+      // Ignore DB disconnection during cookie cleanup
+    }
+  }
+
+  cookieStore.delete(env.SESSION_COOKIE_NAME);
+  return true;
+}
+
+export async function getCurrentMember(): Promise<AuthenticatedMember | null> {
+  const env = getEnv();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(env.SESSION_COOKIE_NAME)?.value;
+  if (!token) {
+    return null;
+  }
+
+  try {
+    await connectToDatabase();
+    const session = await Session.findOne({
+      tokenHash: hashSessionToken(token),
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!session) {
+      return null;
+    }
+
+    const member = await Member.findById(session.memberId);
+    if (!member) {
+      return null;
+    }
+
+    return toAuthenticatedMember(member);
+  } catch {
+    return null;
+  }
+}
