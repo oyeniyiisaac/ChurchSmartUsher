@@ -4,4 +4,6 @@ dist
 build
 pnpm-lock.yaml
 design
+.data
+
 

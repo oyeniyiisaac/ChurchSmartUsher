@@ -463,7 +463,7 @@ export default function DashboardPage(): ReactNode {
           </Link>
           <Link
             className="flex-1 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors"
-            href="/dashboard"
+            href="/photos"
           >
             <span className="material-symbols-outlined text-[24px]">photo_library</span>
             <span className="font-label-sm text-label-sm">Photos</span>

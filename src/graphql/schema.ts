@@ -273,6 +273,59 @@ export const typeDefs = `#graphql
     station: String
   }
 
+  type ServicePhoto {
+    id: ID!
+    title: String!
+    fileName: String!
+    albumKey: String!
+    albumTitle: String!
+    serviceDate: String!
+    photographer: String!
+    imageUrl: String!
+    storageKey: String!
+    fileSizeLabel: String!
+    fileSizeBytes: Int!
+    tags: [String!]!
+    status: String!
+    needsConsentCheck: Boolean!
+    uploadedAt: String!
+    expiresAt: String!
+    daysLeftLabel: String!
+    daysLeftCount: Int!
+  }
+
+  type AdminPhotoHubOverview {
+    totalCount: Int!
+    publishedCount: Int!
+    pendingCount: Int!
+    flaggedCount: Int!
+    storageUsedLabel: String!
+    storageLimitLabel: String!
+    policyPurgeCountdown: String!
+    photos: [ServicePhoto!]!
+  }
+
+  type PurgePhotosResult {
+    deletedCount: Int!
+    deletedKeys: [String!]!
+    reclaimedBytes: Int!
+  }
+
+  input UploadServicePhotoInput {
+    title: String!
+    fileName: String!
+    albumKey: String
+    albumTitle: String
+    serviceDate: String
+    photographer: String
+    imageUrl: String
+    fileSizeLabel: String
+    tags: [String!]
+    status: String
+    needsConsentCheck: Boolean
+    fileContentBase64: String
+  }
+
   type Query {
     ping: PingResult!
     me: Member
@@ -288,6 +341,9 @@ export const typeDefs = `#graphql
     serviceAttendance(serviceId: ID!): ServiceAttendanceSummary!
     attendanceReports: AttendanceReportsSummary!
     exportAttendanceCsv(serviceId: ID): String!
+    servicePhotos(albumKey: String): [ServicePhoto!]!
+    servicePhoto(id: ID!): ServicePhoto
+    adminPhotoHub(statusFilter: String, tagFilter: String): AdminPhotoHubOverview!
     adminOnlyCheck: String!
   }
 
@@ -306,5 +362,8 @@ export const typeDefs = `#graphql
     markManualPresent(serviceId: ID!, memberId: ID!, station: String): MarkPresentResult!
     registerGuestAttendance(input: RegisterGuestInput!): AttendanceRecord!
     undoAttendance(attendanceId: ID!): Boolean!
+    uploadServicePhoto(input: UploadServicePhotoInput!): ServicePhoto!
+    moderateServicePhoto(photoId: ID!, action: String!): ServicePhoto!
+    purgeExpiredPhotos: PurgePhotosResult!
   }
 `;

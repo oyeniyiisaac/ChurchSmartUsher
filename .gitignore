@@ -31,4 +31,6 @@ next-env.d.ts
 
 # design reference export
 /design/
+/.data/
+
 

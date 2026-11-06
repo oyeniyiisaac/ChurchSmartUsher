@@ -48,6 +48,18 @@ import {
   getMyStreakSummary,
   type StreakSummary,
 } from "@/services/streak";
+import {
+  type AdminPhotoHubOverview,
+  getPhotoById,
+  listActivePhotos,
+  listAdminPhotos,
+  moderateServicePhoto,
+  purgeExpiredPhotos,
+  type PurgePhotosResult,
+  type ServicePhotoRecord,
+  type UploadServicePhotoInput,
+  uploadServicePhoto,
+} from "@/services/photo";
 import type { ServiceType } from "@/db/models";
 import type {
   ActivityInput,
@@ -175,6 +187,34 @@ export const resolvers = {
     ): Promise<string> => {
       requireRole(context.member ?? null, ["USHER", "ADMIN"]);
       return exportServiceAttendanceCsv(args.serviceId);
+    },
+
+    servicePhotos: async (
+      _parent: unknown,
+      args: { albumKey?: string },
+      _context: GraphQLContext,
+    ): Promise<ServicePhotoRecord[]> => {
+      return listActivePhotos({ albumKey: args.albumKey });
+    },
+
+    servicePhoto: async (
+      _parent: unknown,
+      args: { id: string },
+      _context: GraphQLContext,
+    ): Promise<ServicePhotoRecord | null> => {
+      return getPhotoById(args.id);
+    },
+
+    adminPhotoHub: async (
+      _parent: unknown,
+      args: { statusFilter?: string; tagFilter?: string },
+      context: GraphQLContext,
+    ): Promise<AdminPhotoHubOverview> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return listAdminPhotos({
+        statusFilter: args.statusFilter,
+        tagFilter: args.tagFilter,
+      });
     },
 
     adminOnlyCheck: (_parent: unknown, _args: unknown, context: GraphQLContext): string => {
@@ -305,6 +345,36 @@ export const resolvers = {
     ): Promise<boolean> => {
       requireRole(context.member ?? null, ["USHER", "ADMIN"]);
       return undoAttendance(args.attendanceId);
+    },
+
+    uploadServicePhoto: async (
+      _parent: unknown,
+      args: { input: UploadServicePhotoInput },
+      context: GraphQLContext,
+    ): Promise<ServicePhotoRecord> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return uploadServicePhoto(args.input);
+    },
+
+    moderateServicePhoto: async (
+      _parent: unknown,
+      args: {
+        photoId: string;
+        action: "PUBLISH" | "APPROVE" | "BLUR_MINORS" | "REJECT" | "DELETE";
+      },
+      context: GraphQLContext,
+    ): Promise<ServicePhotoRecord> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return moderateServicePhoto(args);
+    },
+
+    purgeExpiredPhotos: async (
+      _parent: unknown,
+      _args: unknown,
+      context: GraphQLContext,
+    ): Promise<PurgePhotosResult> => {
+      requireRole(context.member ?? null, ["ADMIN"]);
+      return purgeExpiredPhotos();
     },
   },
 };

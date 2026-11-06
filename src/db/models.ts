@@ -15,6 +15,9 @@ export type ServiceStatus = (typeof SERVICE_STATUSES)[number];
 export const ATTENDANCE_METHODS = ["QR", "MANUAL", "GUEST"] as const;
 export type AttendanceMethod = (typeof ATTENDANCE_METHODS)[number];
 
+export const PHOTO_STATUSES = ["PUBLISHED", "APPROVED", "PENDING", "REJECTED"] as const;
+export type PhotoStatus = (typeof PHOTO_STATUSES)[number];
+
 const departmentSchema = new Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
@@ -132,6 +135,33 @@ attendanceSchema.index(
   },
 );
 
+const photoSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    fileName: { type: String, required: true, trim: true },
+    albumKey: { type: String, default: "today", required: true, index: true },
+    albumTitle: {
+      type: String,
+      default: "Sunday Thanksgiving Service - 17 Nov 2024",
+      required: true,
+    },
+    serviceDate: { type: String, required: true },
+    photographer: { type: String, default: "Emmanuel & Grace", trim: true },
+    imageUrl: { type: String, required: true },
+    storageKey: { type: String, required: true, unique: true },
+    fileSizeLabel: { type: String, default: "3.4 MB" },
+    fileSizeBytes: { type: Number, default: 3_400_000 },
+    tags: { type: [String], default: [] },
+    status: { type: String, enum: PHOTO_STATUSES, default: "PUBLISHED", required: true },
+    needsConsentCheck: { type: Boolean, default: false, required: true },
+    uploadedAt: { type: Date, default: () => new Date(), required: true },
+    expiresAt: { type: Date, required: true, index: true },
+  },
+  { timestamps: true },
+);
+
+photoSchema.index({ expiresAt: 1, status: 1 });
+
 export type DepartmentDocument = InferSchemaType<typeof departmentSchema> & {
   _id: mongoose.Types.ObjectId;
 };
@@ -148,6 +178,9 @@ export type ServiceDocument = InferSchemaType<typeof serviceSchema> & {
   _id: mongoose.Types.ObjectId;
 };
 export type AttendanceDocument = InferSchemaType<typeof attendanceSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+export type PhotoDocument = InferSchemaType<typeof photoSchema> & {
   _id: mongoose.Types.ObjectId;
 };
 
@@ -174,3 +207,7 @@ export const Service: Model<ServiceDocument> =
 export const Attendance: Model<AttendanceDocument> =
   (mongoose.models.Attendance as Model<AttendanceDocument>) ||
   mongoose.model<AttendanceDocument>("Attendance", attendanceSchema);
+
+export const Photo: Model<PhotoDocument> =
+  (mongoose.models.Photo as Model<PhotoDocument>) ||
+  mongoose.model<PhotoDocument>("Photo", photoSchema);
