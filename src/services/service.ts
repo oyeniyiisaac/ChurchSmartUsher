@@ -12,6 +12,7 @@ import {
   signServiceToken,
   verifyServiceToken,
 } from "./qr";
+import { reconcileServiceStreaksOnClose } from "./streak";
 import { type CreateServiceInput, createServiceInputSchema } from "./validation";
 
 export type ServiceInfo = {
@@ -172,6 +173,8 @@ export async function closeService(serviceId: string): Promise<ServiceInfo> {
   doc.status = "CLOSED";
   doc.closedAt = new Date();
   await doc.save();
+
+  await reconcileServiceStreaksOnClose(serviceId);
 
   return toServiceInfo(doc);
 }

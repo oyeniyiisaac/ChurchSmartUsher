@@ -41,6 +41,14 @@ import {
   type ServiceInfo,
   type ServiceQrPayload,
 } from "@/services/service";
+import {
+  type AttendanceReportsSummary,
+  exportServiceAttendanceCsv,
+  getAttendanceReports,
+  getMyStreakSummary,
+  type StreakSummary,
+} from "@/services/streak";
+import type { ServiceType } from "@/db/models";
 import type {
   ActivityInput,
   AssignAffiliationsInput,
@@ -89,6 +97,15 @@ export const resolvers = {
       } catch {
         return authenticated;
       }
+    },
+
+    myStreak: async (
+      _parent: unknown,
+      args: { serviceType?: ServiceType },
+      context: GraphQLContext,
+    ): Promise<StreakSummary> => {
+      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
+      return getMyStreakSummary(authenticated, args.serviceType ?? "SUNDAY");
     },
 
     departments: async (): Promise<DepartmentInfo[]> => {
@@ -140,6 +157,24 @@ export const resolvers = {
     ): Promise<ServiceAttendanceSummary> => {
       requireRole(context.member ?? null, ["USHER", "ADMIN"]);
       return getServiceAttendance(args.serviceId);
+    },
+
+    attendanceReports: async (
+      _parent: unknown,
+      _args: unknown,
+      context: GraphQLContext,
+    ): Promise<AttendanceReportsSummary> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return getAttendanceReports();
+    },
+
+    exportAttendanceCsv: async (
+      _parent: unknown,
+      args: { serviceId?: string },
+      context: GraphQLContext,
+    ): Promise<string> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return exportServiceAttendanceCsv(args.serviceId);
     },
 
     adminOnlyCheck: (_parent: unknown, _args: unknown, context: GraphQLContext): string => {

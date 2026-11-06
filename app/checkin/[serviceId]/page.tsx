@@ -316,7 +316,7 @@ function CheckinPageContent(): ReactNode {
                 Go to Home
               </Link>
               <Link
-                href="/profile"
+                href="/streak"
                 className="w-full h-[48px] rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs shadow-xs active:bg-surface-container-high transition-all duration-150"
               >
                 <span className="material-symbols-outlined text-[18px] text-secondary">

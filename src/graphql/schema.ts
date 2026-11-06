@@ -149,6 +149,55 @@ export const typeDefs = `#graphql
     records: [AttendanceRecord!]!
   }
 
+  type StreakBadge {
+    code: String!
+    title: String!
+    threshold: Int!
+    unlocked: Boolean!
+    progressCount: Int!
+    subtitle: String!
+  }
+
+  type StreakCalendarEntry {
+    serviceId: ID!
+    label: String!
+    subtitle: String!
+    status: String!
+  }
+
+  type StreakSummary {
+    currentStreak: Int!
+    longestStreak: Int!
+    totalInYear: Int!
+    monthCompletedLabel: String!
+    badges: [StreakBadge!]!
+    calendarEntries: [StreakCalendarEntry!]!
+  }
+
+  type ServiceArchiveRow {
+    id: ID!
+    name: String!
+    dateLabel: String!
+    serviceTypeLabel: String!
+    attendanceCount: Int!
+    memberVsGuestLabel: String!
+    memberRatioPercent: Float!
+    capacityPercent: Int!
+    scanVsManualLabel: String!
+    usherName: String!
+    usherInitials: String!
+    statusLabel: String!
+    isPeak: Boolean!
+  }
+
+  type AttendanceReportsSummary {
+    totalRecordedQ4: Int!
+    avgSundayTurnout: Int!
+    digitalScanPercent: Float!
+    visitorRetentionPercent: Int!
+    archiveRows: [ServiceArchiveRow!]!
+  }
+
   type AuthPayload {
     member: Member!
     redirectTo: String!
@@ -228,6 +277,7 @@ export const typeDefs = `#graphql
     ping: PingResult!
     me: Member
     myProfile: Member!
+    myStreak(serviceType: ServiceType): StreakSummary!
     departments: [Department!]!
     activities: [Activity!]!
     members(filter: MembersFilterInput): [Member!]!
@@ -236,6 +286,8 @@ export const typeDefs = `#graphql
     serviceQr(serviceId: ID!): ServiceQrPayload!
     checkinPreview(serviceId: ID!, token: String!): CheckinPreview!
     serviceAttendance(serviceId: ID!): ServiceAttendanceSummary!
+    attendanceReports: AttendanceReportsSummary!
+    exportAttendanceCsv(serviceId: ID): String!
     adminOnlyCheck: String!
   }
 

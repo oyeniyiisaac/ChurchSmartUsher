@@ -563,7 +563,7 @@ export default function ServicesPage(): ReactNode {
             </Link>
 
             <Link
-              href="/admin"
+              href="/reports"
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors text-body-md font-medium"
             >
               <span className="material-symbols-outlined text-[20px]">local_fire_department</span>
