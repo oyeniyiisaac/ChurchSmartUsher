@@ -2,7 +2,13 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { getEnv } from "@/config/env";
-import { Member, type MemberDocument, Session, type UserRole } from "@/db/models";
+import {
+  Member,
+  type MemberDocument,
+  type MemberGender,
+  Session,
+  type UserRole,
+} from "@/db/models";
 import { connectToDatabase } from "@/db/mongoose";
 import { hashSessionToken } from "./password";
 
@@ -11,12 +17,19 @@ export type AuthenticatedMember = {
   fullName: string;
   phone: string;
   email?: string | null;
+  gender?: MemberGender | null;
   role: UserRole;
+  status?: string;
   department: string;
   activities: string[];
+  departmentIds?: string[];
+  activityIds?: string[];
   memberCode: string;
+  emergencyContact?: string | null;
+  notes?: string | null;
   currentStreak: number;
   longestStreak: number;
+  consentGivenAt?: string;
 };
 
 export function toAuthenticatedMember(doc: MemberDocument): AuthenticatedMember {
@@ -25,12 +38,21 @@ export function toAuthenticatedMember(doc: MemberDocument): AuthenticatedMember 
     fullName: doc.fullName,
     phone: doc.phone,
     email: doc.email ?? null,
+    gender: (doc.gender as MemberGender | undefined) ?? "Male",
     role: doc.role,
+    status: doc.status ?? "ACTIVE",
     department: doc.department,
     activities: doc.activities ?? [],
+    departmentIds: (doc.departmentIds ?? []).map((id) => id.toString()),
+    activityIds: (doc.activityIds ?? []).map((id) => id.toString()),
     memberCode: doc.memberCode,
+    emergencyContact: doc.emergencyContact ?? null,
+    notes: doc.notes ?? null,
     currentStreak: doc.currentStreak,
     longestStreak: doc.longestStreak,
+    consentGivenAt: doc.consentAcceptedAt
+      ? new Date(doc.consentAcceptedAt).toISOString()
+      : new Date().toISOString(),
   };
 }
 

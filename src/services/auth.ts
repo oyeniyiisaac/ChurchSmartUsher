@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { GraphQLError } from "graphql";
 
 import { hashPassword, verifyPassword } from "@/auth/password";
@@ -9,8 +8,9 @@ import {
   setSessionCookie,
   toAuthenticatedMember,
 } from "@/auth/session";
-import { Member, type UserRole } from "@/db/models";
+import { Department, Member, type UserRole } from "@/db/models";
 import { connectToDatabase } from "@/db/mongoose";
+import { generateNextMemberCode } from "./profile";
 import {
   getSafeReturnTo,
   type LoginInput,
@@ -63,11 +63,6 @@ export function requireRole(
   return member;
 }
 
-function generateMemberCode(): string {
-  const suffix = randomBytes(3).toString("hex").toUpperCase();
-  return `CC-${suffix}`;
-}
-
 export async function registerMember(rawInput: RegisterInput): Promise<AuthPayload> {
   const parsed = registerInputSchema.parse(rawInput);
   await connectToDatabase();
@@ -79,16 +74,24 @@ export async function registerMember(rawInput: RegisterInput): Promise<AuthPaylo
     });
   }
 
+  const departmentName = parsed.department || "Sanctuary Choir";
+  const matchedDept = await Department.findOne({ name: departmentName });
+  const memberCode = await generateNextMemberCode();
   const passwordHash = await hashPassword(parsed.password);
+
   const created = await Member.create({
     fullName: parsed.fullName,
     phone: parsed.phone,
     email: parsed.email,
+    gender: parsed.gender ?? "Male",
     passwordHash,
     role: "MEMBER",
-    department: parsed.department || "General Assembly",
-    activities: [],
-    memberCode: generateMemberCode(),
+    status: "ACTIVE",
+    department: departmentName,
+    activities: ["Sunday School Class 4"],
+    departmentIds: matchedDept ? [matchedDept._id] : [],
+    activityIds: [],
+    memberCode,
     currentStreak: 0,
     longestStreak: 0,
     consentAcceptedAt: new Date(),

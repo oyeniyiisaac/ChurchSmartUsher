@@ -110,21 +110,21 @@ export default function AdminPage(): ReactNode {
             </Link>
             <Link
               className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/admin"
+              href="/members"
             >
               <span className="material-symbols-outlined text-[20px]">group</span>
               <span className="font-label-md text-label-md">Members</span>
             </Link>
             <Link
               className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/admin"
+              href="/usher"
             >
               <span className="material-symbols-outlined text-[20px]">event_available</span>
               <span className="font-label-md text-label-md">Services</span>
             </Link>
             <Link
               className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/admin"
+              href="/departments"
             >
               <span className="material-symbols-outlined text-[20px]">account_tree</span>
               <span className="font-label-md text-label-md">Departments &amp; Activities</span>

@@ -133,7 +133,7 @@ export default function DashboardPage(): ReactNode {
             </button>
             <Link
               className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center"
-              href="/dashboard"
+              href="/profile"
             >
               <img
                 alt="Profile"
@@ -470,7 +470,7 @@ export default function DashboardPage(): ReactNode {
           </Link>
           <Link
             className="flex-1 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors"
-            href="/dashboard"
+            href="/profile"
           >
             <span className="material-symbols-outlined text-[24px]">person</span>
             <span className="font-label-sm text-label-sm">Profile</span>

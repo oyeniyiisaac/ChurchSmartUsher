@@ -120,6 +120,9 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
             input: {
               fullName,
               phone,
+              email,
+              gender,
+              department,
               password,
               consentGiven,
               returnTo: returnToParam,
