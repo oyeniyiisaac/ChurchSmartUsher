@@ -1,13 +1,30 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import "./globals.css";
 import { AppProviders } from "./providers";
 
+export const viewport: Viewport = {
+  themeColor: "#00236f",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "ChurchConnect — Grace Sanctuary Parish",
   description:
     "Warm Sanctuary Digital Experience — Church attendance, consistency streaks, and member fellowship portal",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ChurchConnect",
+  },
+  icons: {
+    icon: "/icon-192.svg",
+    apple: "/icon-192.svg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>): ReactNode {

@@ -572,7 +572,7 @@ export default function ServicesPage(): ReactNode {
 
             <div className="pt-3 mt-3 border-t border-outline-variant/15">
               <Link
-                href="/admin"
+                href="/settings"
                 className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors text-body-md font-medium"
               >
                 <span className="material-symbols-outlined text-[20px]">settings</span>

@@ -326,6 +326,37 @@ export const typeDefs = `#graphql
     fileContentBase64: String
   }
 
+  type ParishSettings {
+    parishName: String!
+    denomination: String!
+    foyerDesks: [String!]!
+    qrRotationSeconds: Int!
+    geofenceEnabled: Boolean!
+    geofenceRadiusMeters: Int!
+    sanctuaryLatitude: Float!
+    sanctuaryLongitude: Float!
+    duplicateScanDefense: Boolean!
+    childMinorShieldEnabled: Boolean!
+    compressionProfile: String!
+    updatedAt: String!
+  }
+
+  type GeofenceCheckResult {
+    withinGeofence: Boolean!
+    distanceMeters: Int!
+    maxRadiusMeters: Int!
+  }
+
+  input UpdateParishSettingsInput {
+    parishName: String
+    denomination: String
+    qrRotationSeconds: Int
+    geofenceEnabled: Boolean
+    geofenceRadiusMeters: Int
+    childMinorShieldEnabled: Boolean
+    compressionProfile: String
+  }
+
   type Query {
     ping: PingResult!
     me: Member
@@ -344,6 +375,8 @@ export const typeDefs = `#graphql
     servicePhotos(albumKey: String): [ServicePhoto!]!
     servicePhoto(id: ID!): ServicePhoto
     adminPhotoHub(statusFilter: String, tagFilter: String): AdminPhotoHubOverview!
+    parishSettings: ParishSettings!
+    verifyGeofence(latitude: Float!, longitude: Float!): GeofenceCheckResult!
     adminOnlyCheck: String!
   }
 
@@ -365,5 +398,6 @@ export const typeDefs = `#graphql
     uploadServicePhoto(input: UploadServicePhotoInput!): ServicePhoto!
     moderateServicePhoto(photoId: ID!, action: String!): ServicePhoto!
     purgeExpiredPhotos: PurgePhotosResult!
+    updateParishSettings(input: UpdateParishSettingsInput!): ParishSettings!
   }
 `;

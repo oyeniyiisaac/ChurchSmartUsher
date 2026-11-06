@@ -60,6 +60,14 @@ import {
   type UploadServicePhotoInput,
   uploadServicePhoto,
 } from "@/services/photo";
+import {
+  type GeofenceCheckResult,
+  getParishSettings,
+  type ParishSettingsRecord,
+  type UpdateParishSettingsInput,
+  updateParishSettings,
+  verifySanctuaryGeofence,
+} from "@/services/settings";
 import type { ServiceType } from "@/db/models";
 import type {
   ActivityInput,
@@ -215,6 +223,24 @@ export const resolvers = {
         statusFilter: args.statusFilter,
         tagFilter: args.tagFilter,
       });
+    },
+
+    parishSettings: async (
+      _parent: unknown,
+      _args: unknown,
+      context: GraphQLContext,
+    ): Promise<ParishSettingsRecord> => {
+      requireRole(context.member ?? null, ["ADMIN"]);
+      return getParishSettings();
+    },
+
+    verifyGeofence: async (
+      _parent: unknown,
+      args: { latitude: number; longitude: number },
+      context: GraphQLContext,
+    ): Promise<GeofenceCheckResult> => {
+      requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
+      return verifySanctuaryGeofence(args);
     },
 
     adminOnlyCheck: (_parent: unknown, _args: unknown, context: GraphQLContext): string => {
@@ -375,6 +401,15 @@ export const resolvers = {
     ): Promise<PurgePhotosResult> => {
       requireRole(context.member ?? null, ["ADMIN"]);
       return purgeExpiredPhotos();
+    },
+
+    updateParishSettings: async (
+      _parent: unknown,
+      args: { input: UpdateParishSettingsInput },
+      context: GraphQLContext,
+    ): Promise<ParishSettingsRecord> => {
+      requireRole(context.member ?? null, ["ADMIN"]);
+      return updateParishSettings(args.input);
     },
   },
 };

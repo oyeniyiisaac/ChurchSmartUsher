@@ -95,8 +95,7 @@ export default function PhotoViewerPage(): ReactElement {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query:
-          "query GetServicePhoto($id: ID!) { servicePhoto(id: $id) { id title albumTitle } }",
+        query: "query GetServicePhoto($id: ID!) { servicePhoto(id: $id) { id title albumTitle } }",
         variables: { id: photoId },
       }),
     }).catch(() => undefined);
