@@ -495,7 +495,7 @@ export default function ServicesPage(): ReactNode {
       )}
 
       {/* Left Sidebar Navigation (260px Fixed) */}
-      <aside className="w-[260px] shrink-0 bg-surface-container-low border-r border-outline-variant/20 flex flex-col justify-between sticky top-0 h-screen z-30">
+      <aside className="hidden lg:flex w-[260px] shrink-0 bg-surface-container-low border-r border-outline-variant/20 flex-col justify-between sticky top-0 h-screen z-30">
         <div>
           {/* Parish Brand Header */}
           <div className="p-6 pb-5 border-b border-outline-variant/15">
@@ -614,7 +614,7 @@ export default function ServicesPage(): ReactNode {
       {/* Main Content Workspace */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Action & Breadcrumb Header */}
-        <header className="sticky top-0 z-20 bg-surface/85 backdrop-blur-xl border-b border-outline-variant/15 px-8 py-4">
+        <header className="sticky top-0 z-20 bg-surface/85 backdrop-blur-xl border-b border-outline-variant/15 px-4 sm:px-6 lg:px-8 py-4">
           <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
             {/* Left: Breadcrumb & Service Identity */}
             <div>
@@ -699,7 +699,7 @@ export default function ServicesPage(): ReactNode {
         </header>
 
         {/* Main Body Content */}
-        <main className="flex-1 px-8 py-6 max-w-[1440px] w-full mx-auto space-y-6">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-8 max-w-[1440px] w-full mx-auto space-y-6">
           {/* 1. Live Metrics Ribbon (6-Card Strip) */}
           <section
             aria-label="Live Service Metrics"

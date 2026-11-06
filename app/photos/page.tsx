@@ -184,7 +184,7 @@ export default function PhotosGalleryPage(): ReactElement {
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
       {/* Top App Bar */}
       <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-margin flex items-center justify-between">
+        <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <img
               alt="ChurchConnect Brand Logo"
@@ -222,8 +222,8 @@ export default function PhotosGalleryPage(): ReactElement {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface">
-        <div className="flex flex-col w-full">
+      <main className="flex-1 flex flex-col relative w-full pt-16 pb-28 bg-surface">
+        <div className="flex flex-col w-full max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto">
           {/* Info & Auto-Expiry Notice Banner */}
           {showBanner && (
             <div className="px-margin pt-space-md">
@@ -379,9 +379,9 @@ export default function PhotosGalleryPage(): ReactElement {
             </div>
           )}
 
-          {/* 3-Column Photo Grid */}
+          {/* Responsive Photo Grid (3 cols on mobile, 4 cols on tablet/desktop) */}
           <div className="px-margin mt-space-md">
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
               {filteredPhotos.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
                 return (
@@ -547,7 +547,7 @@ export default function PhotosGalleryPage(): ReactElement {
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
+      <nav className="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
         <div className="flex justify-around items-center h-16 px-space-xs">
           <Link
             className="flex-1 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors"

@@ -183,7 +183,7 @@ export default function ProfilePage(): ReactNode {
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
       {/* Stitch Top Header (8._member_profile) */}
       <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-margin max-w-[600px] mx-auto flex items-center justify-between">
+        <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <img
               alt="ChurchConnect Brand Logo"
@@ -221,8 +221,8 @@ export default function ProfilePage(): ReactNode {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface">
-        <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin pb-space-xl">
+      <main className="flex-1 flex flex-col relative w-full pt-16 pb-28 bg-surface">
+        <div className="flex flex-col w-full max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-space-xl">
           {feedbackMsg && (
             <div
               className="mt-space-sm rounded-xl bg-tertiary-fixed/50 text-on-tertiary-fixed-variant px-space-md py-space-sm font-label-sm text-label-sm flex items-center justify-between"
@@ -242,198 +242,213 @@ export default function ProfilePage(): ReactNode {
             </div>
           )}
 
-          {/* Member Profile Header Card */}
-          <section className="w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col items-center text-center relative overflow-hidden mt-space-sm">
-            {/* Decorative Ambient Glow */}
-            <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-primary-fixed/30 blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-secondary-fixed/40 blur-xl pointer-events-none" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-space-sm">
+            {/* Left Column on Desktop: Member Profile Header Card */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              <section className="w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+                {/* Decorative Ambient Glow */}
+                <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-primary-fixed/30 blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-secondary-fixed/40 blur-xl pointer-events-none" />
 
-            {/* Avatar with Verified Badge */}
-            <div className="relative mb-space-md">
-              <div className="w-24 h-24 rounded-full p-1 bg-surface-container-high shadow-md">
-                <img
-                  alt={displayFullName}
-                  className="w-full h-full rounded-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
-                />
-              </div>
-              <div className="absolute bottom-0 right-1 bg-tertiary-container text-on-tertiary-container rounded-full p-1 shadow-sm flex items-center justify-center">
-                <span className="material-symbols-outlined text-[18px] material-icon-filled">
-                  verified
-                </span>
-              </div>
-            </div>
-
-            {/* Member Name & ID Chip */}
-            <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight mb-space-xs">
-              {displayFullName}
-            </h1>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant mb-space-md shadow-xs">
-              <span className="material-symbols-outlined text-[16px] text-primary">badge</span>
-              <span className="font-label-sm text-label-sm font-semibold tracking-wide">
-                ID: {displayMemberCode}
-              </span>
-            </div>
-
-            {/* Status Indicator Pill */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low text-secondary mb-space-md">
-              <span className="w-2 h-2 rounded-full bg-secondary-container animate-pulse" />
-              <span className="font-label-md text-label-md font-medium text-on-surface">
-                Active Member · Baptized
-              </span>
-            </div>
-
-            {/* Contact Details */}
-            <div className="flex flex-col items-center gap-1 text-on-surface-variant font-body-sm text-body-sm max-w-xs">
-              <div className="flex items-center gap-1.5 text-center">
-                <span className="material-symbols-outlined text-[16px] text-outline">call</span>
-                <span>{displayPhone}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-center">
-                <span className="material-symbols-outlined text-[16px] text-outline">mail</span>
-                <span className="truncate">{displayEmail}</span>
-              </div>
-            </div>
-
-            {/* Edit Profile Action Button */}
-            <button
-              onClick={openEditModal}
-              className="mt-space-lg w-full h-12 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] transition-transform cursor-pointer"
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[20px]">edit</span>
-              <span>Edit Profile Information</span>
-            </button>
-          </section>
-
-          {/* Department & Ministry Affiliations */}
-          <section className="mt-space-lg flex flex-col gap-space-sm">
-            <div className="flex items-center justify-between px-space-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[20px] text-primary">groups</span>
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">
-                  Departments &amp; Roles
-                </h2>
-              </div>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">2 Units</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-high text-on-surface shadow-xs">
-                <span className="material-symbols-outlined text-[18px] text-primary-container">
-                  music_note
-                </span>
-                <span className="font-label-md text-label-md font-semibold">
-                  {displayDepartment.includes("Choir")
-                    ? "Sanctuary Choir (Tenor)"
-                    : displayDepartment}
-                </span>
-              </div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-secondary-fixed text-on-secondary-fixed shadow-xs">
-                <span className="material-symbols-outlined text-[18px] text-secondary">star</span>
-                <span className="font-label-md text-label-md font-semibold">
-                  Youth Fellowship Executive
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* Fellowship Activities & Cohorts */}
-          <section className="mt-space-md flex flex-col gap-space-sm">
-            <div className="flex items-center justify-between px-space-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[20px] text-primary">
-                  menu_book
-                </span>
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">
-                  Fellowship &amp; Growth
-                </h2>
-              </div>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                {displayActivities.length} Groups
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {displayActivities.map((actName, idx) => {
-                const icons = ["school", "auto_stories", "diversity_3", "water_drop"];
-                const icon = icons[idx % icons.length];
-                return (
-                  <div
-                    key={actName}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-outline">
-                      {icon}
-                    </span>
-                    <span className="font-label-md text-label-md">{actName}</span>
+                {/* Avatar with Verified Badge */}
+                <div className="relative mb-space-md">
+                  <div className="w-24 h-24 rounded-full p-1 bg-surface-container-high shadow-md">
+                    <img
+                      alt={displayFullName}
+                      className="w-full h-full rounded-full object-cover"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                    />
                   </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Attendance History Log */}
-          <section className="mt-space-lg flex flex-col gap-space-sm">
-            <div className="flex items-center justify-between px-space-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[20px] text-primary">
-                  event_available
-                </span>
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">
-                  Attendance Log
-                </h2>
-              </div>
-              <span className="font-label-sm text-label-sm text-primary font-medium">
-                Recent 4 Weeks
-              </span>
-            </div>
-            <div className="flex flex-col gap-space-xs">
-              {ATTENDANCE_RECORDS.map((rec) => (
-                <div
-                  key={rec.id}
-                  className="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between"
-                >
-                  <div className="flex items-start gap-space-sm">
-                    <div
-                      className={`w-10 h-10 rounded-lg ${rec.iconBoxClass} flex items-center justify-center shrink-0`}
-                    >
-                      <span className="material-symbols-outlined text-[22px]">{rec.icon}</span>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-label-lg text-label-lg text-on-surface font-semibold">
-                          {rec.title}
-                        </span>
-                      </div>
-                      <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        {rec.dateTime}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 flex flex-col items-end gap-1">
-                    <span className="px-2 py-0.5 rounded-md bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold">
-                      Present
-                    </span>
-                    <span className="font-label-sm text-label-sm text-outline-variant">
-                      {rec.method}
+                  <div className="absolute bottom-0 right-1 bg-tertiary-container text-on-tertiary-container rounded-full p-1 shadow-sm flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[18px] material-icon-filled">
+                      verified
                     </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Privacy & Regulatory Compliance Notice */}
-          <section className="mt-space-lg mb-space-sm flex flex-col items-center text-center px-space-md">
-            <div className="flex items-center gap-1.5 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[16px] text-tertiary-container">
-                verified_user
-              </span>
-              <span className="font-label-sm text-label-sm font-medium">NDPA 2023 Compliant</span>
+                {/* Member Name & ID Chip */}
+                <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight mb-space-xs">
+                  {displayFullName}
+                </h1>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant mb-space-md shadow-xs">
+                  <span className="material-symbols-outlined text-[16px] text-primary">badge</span>
+                  <span className="font-label-sm text-label-sm font-semibold tracking-wide">
+                    ID: {displayMemberCode}
+                  </span>
+                </div>
+
+                {/* Status Indicator Pill */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low text-secondary mb-space-md">
+                  <span className="w-2 h-2 rounded-full bg-secondary-container animate-pulse" />
+                  <span className="font-label-md text-label-md font-medium text-on-surface">
+                    Active Member · Baptized
+                  </span>
+                </div>
+
+                {/* Contact Details */}
+                <div className="flex flex-col items-center gap-1 text-on-surface-variant font-body-sm text-body-sm max-w-xs">
+                  <div className="flex items-center gap-1.5 text-center">
+                    <span className="material-symbols-outlined text-[16px] text-outline">call</span>
+                    <span>{displayPhone}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-center">
+                    <span className="material-symbols-outlined text-[16px] text-outline">mail</span>
+                    <span className="truncate">{displayEmail}</span>
+                  </div>
+                </div>
+
+                {/* Edit Profile Action Button */}
+                <button
+                  onClick={openEditModal}
+                  className="mt-space-lg w-full h-12 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] transition-transform cursor-pointer"
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                  <span>Edit Profile Information</span>
+                </button>
+              </section>
+
+              {/* Privacy & Regulatory Compliance Notice */}
+              <section className="flex flex-col items-center text-center px-space-md py-3 rounded-xl bg-surface-container-low">
+                <div className="flex items-center gap-1.5 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[16px] text-tertiary-container">
+                    verified_user
+                  </span>
+                  <span className="font-label-sm text-label-sm font-medium">
+                    NDPA 2023 Compliant
+                  </span>
+                </div>
+                <p className="font-body-sm text-body-sm text-outline mt-0.5">
+                  Data managed securely by Grace Sanctuary Parish
+                </p>
+              </section>
             </div>
-            <p className="font-body-sm text-body-sm text-outline mt-0.5">
-              Data managed securely by Grace Sanctuary Parish
-            </p>
-          </section>
+
+            {/* Right Column on Desktop: Departments, Activities & Attendance Log */}
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              {/* Department & Ministry Affiliations */}
+              <section className="flex flex-col gap-space-sm bg-surface-container-lowest rounded-xl p-space-md sm:p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[20px] text-primary">
+                      groups
+                    </span>
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                      Departments &amp; Roles
+                    </h2>
+                  </div>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    2 Units
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-high text-on-surface shadow-xs">
+                    <span className="material-symbols-outlined text-[18px] text-primary-container">
+                      music_note
+                    </span>
+                    <span className="font-label-md text-label-md font-semibold">
+                      {displayDepartment.includes("Choir")
+                        ? "Sanctuary Choir (Tenor)"
+                        : displayDepartment}
+                    </span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-secondary-fixed text-on-secondary-fixed shadow-xs">
+                    <span className="material-symbols-outlined text-[18px] text-secondary">
+                      star
+                    </span>
+                    <span className="font-label-md text-label-md font-semibold">
+                      Youth Fellowship Executive
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Fellowship Activities & Cohorts */}
+              <section className="flex flex-col gap-space-sm bg-surface-container-lowest rounded-xl p-space-md sm:p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[20px] text-primary">
+                      menu_book
+                    </span>
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                      Fellowship &amp; Growth
+                    </h2>
+                  </div>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    {displayActivities.length} Groups
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {displayActivities.map((actName, idx) => {
+                    const icons = ["school", "auto_stories", "diversity_3", "water_drop"];
+                    const icon = icons[idx % icons.length];
+                    return (
+                      <div
+                        key={actName}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface"
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-outline">
+                          {icon}
+                        </span>
+                        <span className="font-label-md text-label-md">{actName}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Attendance History Log */}
+              <section className="flex flex-col gap-space-sm">
+                <div className="flex items-center justify-between px-space-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[20px] text-primary">
+                      event_available
+                    </span>
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                      Attendance Log
+                    </h2>
+                  </div>
+                  <span className="font-label-sm text-label-sm text-primary font-medium">
+                    Recent 4 Weeks
+                  </span>
+                </div>
+                <div className="flex flex-col gap-space-xs">
+                  {ATTENDANCE_RECORDS.map((rec) => (
+                    <div
+                      key={rec.id}
+                      className="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between"
+                    >
+                      <div className="flex items-start gap-space-sm">
+                        <div
+                          className={`w-10 h-10 rounded-lg ${rec.iconBoxClass} flex items-center justify-center shrink-0`}
+                        >
+                          <span className="material-symbols-outlined text-[22px]">{rec.icon}</span>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-label-lg text-label-lg text-on-surface font-semibold">
+                              {rec.title}
+                            </span>
+                          </div>
+                          <span className="font-body-sm text-body-sm text-on-surface-variant">
+                            {rec.dateTime}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span className="px-2 py-0.5 rounded-md bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold">
+                          Present
+                        </span>
+                        <span className="font-label-sm text-label-sm text-outline-variant">
+                          {rec.method}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
         </div>
 
         {/* Edit Profile Modal Drawer */}
@@ -577,7 +592,7 @@ export default function ProfilePage(): ReactNode {
       </main>
 
       {/* Stitch Persistent 4-Slot Member Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
+      <nav className="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
         <div className="flex justify-around items-center h-16 max-w-[600px] mx-auto px-space-xs">
           <Link
             className="flex-1 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:text-on-surface transition-colors"

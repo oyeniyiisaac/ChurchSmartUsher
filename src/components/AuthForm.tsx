@@ -154,7 +154,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
   if (mode === "register") {
     return (
       <main className="flex-1 flex flex-col relative w-full pt-safe pb-safe bg-surface">
-        <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin pb-12">
+        <div className="flex flex-col w-full max-w-[600px] md:max-w-2xl lg:max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 md:py-6">
           <div className="flex items-center justify-between py-space-sm mb-space-sm">
             <Link
               href={`/login${switchQuery}`}
@@ -428,269 +428,316 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
   return (
     <main className="flex-1 flex flex-col relative w-full pt-safe pb-safe bg-surface">
-      <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin pt-space-md pb-space-2xl">
-        {/* Subtle decorative ambient greeting banner */}
-        <div className="relative w-full overflow-hidden rounded-xl bg-surface-container-low shadow-sm mb-space-lg p-space-md">
-          <div className="flex items-center gap-space-md">
-            <div className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-surface-container-lowest shadow-sm flex items-center justify-center p-space-xs">
-              <img
-                alt="ChurchConnect Brand Logo"
-                className="w-full h-full object-contain"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
-              />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <div className="inline-flex items-center gap-space-xs bg-secondary-fixed text-on-secondary-fixed rounded-full px-space-sm py-0.5 w-max">
-                <span className="material-symbols-outlined text-[14px]">church</span>
-                <span className="font-label-sm text-label-sm uppercase tracking-wider">
-                  Sanctuary Portal
-                </span>
-              </div>
-              <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate mt-1">
-                ChurchConnect
-              </h1>
-            </div>
-          </div>
-        </div>
-
-        {/* Welcome Statement */}
-        <div className="flex flex-col mb-space-xl">
-          <h2 className="font-headline-md text-headline-md text-on-surface">
-            Welcome to your church family portal
-          </h2>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs leading-relaxed">
-            Sign in to confirm attendance, track your consistency, and save service memories.
-          </p>
-        </div>
-
-        {returnToParam && (
-          <div
-            className="flex items-center gap-2 rounded-xl bg-tertiary-fixed/40 text-on-tertiary-fixed-variant px-space-md py-space-sm mb-space-md font-label-sm text-label-sm"
-            role="status"
-          >
-            <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
-            <span>Return destination saved: {returnToParam}</span>
-          </div>
-        )}
-
-        {errorMessage && (
-          <div
-            className="flex items-center gap-2 rounded-xl bg-error-container text-on-error-container px-space-md py-space-sm mb-space-md font-label-sm text-label-sm"
-            role="alert"
-          >
-            <span className="material-symbols-outlined text-[18px]">error</span>
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Sign In Form Card */}
-        <div className="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-lg mb-space-lg">
-          <form className="flex flex-col gap-space-md" onSubmit={(e) => void handleSubmit(e)}>
-            {/* Method Selector: OTP vs Password */}
-            <div className="grid grid-cols-2 p-1 bg-surface-container rounded-lg">
-              <button
-                className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                  loginMethod === "otp"
-                    ? "bg-surface-container-lowest text-primary shadow-sm"
-                    : "text-on-surface-variant"
-                }`}
-                id="tab-otp"
-                onClick={() => setLoginMethod("otp")}
-                type="button"
-              >
-                <span className="material-symbols-outlined text-[18px]">sms</span>
-                <span>Instant Code</span>
-              </button>
-              <button
-                className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                  loginMethod === "password"
-                    ? "bg-surface-container-lowest text-primary shadow-sm"
-                    : "text-on-surface-variant"
-                }`}
-                id="tab-pass"
-                onClick={() => setLoginMethod("password")}
-                type="button"
-              >
-                <span className="material-symbols-outlined text-[18px]">lock</span>
-                <span>Password</span>
-              </button>
-            </div>
-
-            {/* Phone Number Field */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                className="font-label-md text-label-md text-on-surface-variant"
-                htmlFor="phone-input"
-              >
-                Phone Number
-              </label>
-              <div className="flex items-center gap-2">
-                {/* Country Code Picker */}
-                <div className="h-[52px] px-3 bg-surface-container-low rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface">
-                  <span className="material-symbols-outlined text-[20px] text-primary">flag</span>
-                  <span className="font-body-md text-body-md font-medium">+234</span>
-                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                    expand_more
-                  </span>
-                </div>
-                {/* Phone Number Input */}
-                <div className="relative flex-1">
-                  <input
-                    className="w-full h-[52px] px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
-                    id="phone-input"
-                    placeholder="0803 123 4567"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                    type="tel"
+      <div className="flex flex-col w-full max-w-[600px] md:max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-space-md lg:pt-10 pb-space-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Left Column on Desktop: Brand Welcome, Registration CTA & Parish Footer */}
+          <div className="lg:col-span-5 flex flex-col">
+            {/* Subtle decorative ambient greeting banner */}
+            <div className="relative w-full overflow-hidden rounded-xl bg-surface-container-low shadow-sm mb-space-lg p-space-md">
+              <div className="flex items-center gap-space-md">
+                <div className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-surface-container-lowest shadow-sm flex items-center justify-center p-space-xs">
+                  <img
+                    alt="ChurchConnect Brand Logo"
+                    className="w-full h-full object-contain"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Conditional Password Field */}
-            {loginMethod === "password" ? (
-              <div className="flex flex-col gap-1.5" id="password-container">
-                <div className="flex items-center justify-between">
-                  <label
-                    className="font-label-md text-label-md text-on-surface-variant"
-                    htmlFor="password-input"
-                  >
-                    Account Password
-                  </label>
-                  <span className="font-label-sm text-label-sm text-primary flex items-center gap-0.5">
-                    60-day session active
-                  </span>
-                </div>
-                <div className="relative flex items-center">
-                  <input
-                    className="w-full h-[52px] pl-4 pr-12 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
-                    id="password-input"
-                    placeholder="Enter your church passkey"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    type={showPassword ? "text" : "password"}
-                  />
-                  <button
-                    className="absolute right-3 p-2 text-on-surface-variant hover:text-on-surface cursor-pointer"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    type="button"
-                    aria-label="Toggle password visibility"
-                  >
-                    <span className="material-symbols-outlined text-[20px]" id="eye-icon">
-                      {showPassword ? "visibility_off" : "visibility"}
+                <div className="flex flex-col min-w-0">
+                  <div className="inline-flex items-center gap-space-xs bg-secondary-fixed text-on-secondary-fixed rounded-full px-space-sm py-0.5 w-max">
+                    <span className="material-symbols-outlined text-[14px]">church</span>
+                    <span className="font-label-sm text-label-sm uppercase tracking-wider">
+                      Sanctuary Portal
                     </span>
-                  </button>
+                  </div>
+                  <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate mt-1">
+                    ChurchConnect
+                  </h1>
                 </div>
               </div>
-            ) : (
-              <div
-                className="flex items-start gap-2 bg-surface-container-low rounded-lg p-space-sm text-on-surface-variant"
-                id="otp-hint"
+            </div>
+
+            {/* Welcome Statement */}
+            <div className="flex flex-col mb-space-lg">
+              <h2 className="font-headline-md text-headline-md text-on-surface">
+                Welcome to your church family portal
+              </h2>
+              <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs leading-relaxed">
+                Sign in to confirm attendance, track your consistency, and save service memories.
+              </p>
+            </div>
+
+            {/* Registration Link Card (shown on left on desktop, below on mobile) */}
+            <div className="hidden lg:flex w-full rounded-xl bg-secondary-fixed/30 p-space-md items-center justify-between shadow-sm mb-space-md gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">group_add</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-label-lg text-label-lg text-on-surface">
+                    First time worshipping here?
+                  </span>
+                  <span className="font-body-sm text-body-sm text-on-surface-variant">
+                    New member or first-time visitor?
+                  </span>
+                </div>
+              </div>
+              <Link
+                className="h-10 px-3 rounded-lg bg-surface-container-lowest text-secondary font-label-md text-label-md shadow-sm flex items-center gap-1 shrink-0 hover:bg-surface-container-low"
+                href={`/register${switchQuery}`}
               >
-                <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">
-                  verified_user
+                <span>Create account</span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </Link>
+            </div>
+
+            {/* Parish Sanctuary Footer Reassurance (Desktop) */}
+            <div className="hidden lg:flex flex-col items-center justify-center text-center gap-1.5 p-space-md rounded-xl bg-surface-container-low">
+              <div className="flex items-center gap-1.5 text-secondary">
+                <span className="material-symbols-outlined text-[18px]">location_on</span>
+                <span className="font-label-md text-label-md font-semibold">
+                  Grace Sanctuary Parish, Lagos
                 </span>
-                <p className="font-body-sm text-body-sm">
-                  We will send a 6-digit confirmation code via SMS or WhatsApp to this number.
-                </p>
+              </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                Connecting the body of Christ in worship, fellowship, and truth.
+              </p>
+            </div>
+          </div>
+
+          {/* Right Column on Desktop: Sign In Form Card */}
+          <div className="lg:col-span-7 flex flex-col">
+            {returnToParam && (
+              <div
+                className="flex items-center gap-2 rounded-xl bg-tertiary-fixed/40 text-on-tertiary-fixed-variant px-space-md py-space-sm mb-space-md font-label-sm text-label-sm"
+                role="status"
+              >
+                <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+                <span>Return destination saved: {returnToParam}</span>
               </div>
             )}
 
-            {/* Primary Sign In Button */}
-            <button
-              className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-1 cursor-pointer disabled:opacity-60"
-              disabled={isLoading}
-              type="submit"
-            >
-              <span className="material-symbols-outlined text-[20px]">login</span>
-              <span id="sign-in-label">
-                {isLoading
-                  ? "Signing In..."
-                  : loginMethod === "otp"
-                    ? "Get One-Time Code"
-                    : "Sign In"}
-              </span>
-            </button>
-          </form>
+            {errorMessage && (
+              <div
+                className="flex items-center gap-2 rounded-xl bg-error-container text-on-error-container px-space-md py-space-sm mb-space-md font-label-sm text-label-sm"
+                role="alert"
+              >
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
-          {/* Social / Secondary Divider */}
-          <div className="relative flex items-center justify-center my-space-lg">
-            <div className="w-full h-[1px] bg-surface-container" />
-            <span className="absolute px-3 bg-surface-container-lowest font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
-              or continue with
-            </span>
-          </div>
+            {/* Sign In Form Card */}
+            <div className="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-lg mb-space-lg">
+              <form className="flex flex-col gap-space-md" onSubmit={(e) => void handleSubmit(e)}>
+                {/* Method Selector: OTP vs Password */}
+                <div className="grid grid-cols-2 p-1 bg-surface-container rounded-lg">
+                  <button
+                    className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      loginMethod === "otp"
+                        ? "bg-surface-container-lowest text-primary shadow-sm"
+                        : "text-on-surface-variant"
+                    }`}
+                    id="tab-otp"
+                    onClick={() => setLoginMethod("otp")}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">sms</span>
+                    <span>Instant Code</span>
+                  </button>
+                  <button
+                    className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      loginMethod === "password"
+                        ? "bg-surface-container-lowest text-primary shadow-sm"
+                        : "text-on-surface-variant"
+                    }`}
+                    id="tab-pass"
+                    onClick={() => setLoginMethod("password")}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">lock</span>
+                    <span>Password</span>
+                  </button>
+                </div>
 
-          {/* Alternative Sign-in / Seed Quick Fill Buttons */}
-          <div className="grid grid-cols-3 gap-space-xs">
-            <button
-              className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              type="button"
-              onClick={() => fillSeedCredentials("08000000003")}
-            >
-              <span className="material-symbols-outlined text-primary text-[18px]">badge</span>
-              <span>Member</span>
-            </button>
-            <button
-              className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              type="button"
-              onClick={() => fillSeedCredentials("08000000002")}
-            >
-              <span className="material-symbols-outlined text-secondary text-[18px]">
-                qr_code_scanner
-              </span>
-              <span>Usher</span>
-            </button>
-            <button
-              className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              type="button"
-              onClick={() => fillSeedCredentials("08000000001")}
-            >
-              <span className="material-symbols-outlined text-tertiary text-[18px]">
-                admin_panel_settings
-              </span>
-              <span>Admin</span>
-            </button>
-          </div>
-        </div>
+                {/* Phone Number Field */}
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    className="font-label-md text-label-md text-on-surface-variant"
+                    htmlFor="phone-input"
+                  >
+                    Phone Number
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {/* Country Code Picker */}
+                    <div className="h-[52px] px-3 bg-surface-container-low rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface">
+                      <span className="material-symbols-outlined text-[20px] text-primary">
+                        flag
+                      </span>
+                      <span className="font-body-md text-body-md font-medium">+234</span>
+                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+                        expand_more
+                      </span>
+                    </div>
+                    {/* Phone Number Input */}
+                    <div className="relative flex-1">
+                      <input
+                        className="w-full h-[52px] px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
+                        id="phone-input"
+                        placeholder="0803 123 4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                        type="tel"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-        {/* Registration Link Card */}
-        <div className="w-full rounded-xl bg-secondary-fixed/30 p-space-md flex items-center justify-between shadow-sm mb-space-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shrink-0">
-              <span className="material-symbols-outlined text-[20px]">group_add</span>
+                {/* Conditional Password Field */}
+                {loginMethod === "password" ? (
+                  <div className="flex flex-col gap-1.5" id="password-container">
+                    <div className="flex items-center justify-between">
+                      <label
+                        className="font-label-md text-label-md text-on-surface-variant"
+                        htmlFor="password-input"
+                      >
+                        Account Password
+                      </label>
+                      <span className="font-label-sm text-label-sm text-primary flex items-center gap-0.5">
+                        60-day session active
+                      </span>
+                    </div>
+                    <div className="relative flex items-center">
+                      <input
+                        className="w-full h-[52px] pl-4 pr-12 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
+                        id="password-input"
+                        placeholder="Enter your church passkey"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        type={showPassword ? "text" : "password"}
+                      />
+                      <button
+                        className="absolute right-3 p-2 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        type="button"
+                        aria-label="Toggle password visibility"
+                      >
+                        <span className="material-symbols-outlined text-[20px]" id="eye-icon">
+                          {showPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="flex items-start gap-2 bg-surface-container-low rounded-lg p-space-sm text-on-surface-variant"
+                    id="otp-hint"
+                  >
+                    <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">
+                      verified_user
+                    </span>
+                    <p className="font-body-sm text-body-sm">
+                      We will send a 6-digit confirmation code via SMS or WhatsApp to this number.
+                    </p>
+                  </div>
+                )}
+
+                {/* Primary Sign In Button */}
+                <button
+                  className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-1 cursor-pointer disabled:opacity-60"
+                  disabled={isLoading}
+                  type="submit"
+                >
+                  <span className="material-symbols-outlined text-[20px]">login</span>
+                  <span id="sign-in-label">
+                    {isLoading
+                      ? "Signing In..."
+                      : loginMethod === "otp"
+                        ? "Get One-Time Code"
+                        : "Sign In"}
+                  </span>
+                </button>
+              </form>
+
+              {/* Social / Secondary Divider */}
+              <div className="relative flex items-center justify-center my-space-lg">
+                <div className="w-full h-[1px] bg-surface-container" />
+                <span className="absolute px-3 bg-surface-container-lowest font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+                  or continue with
+                </span>
+              </div>
+
+              {/* Alternative Sign-in / Seed Quick Fill Buttons */}
+              <div className="grid grid-cols-3 gap-space-xs">
+                <button
+                  className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => fillSeedCredentials("08000000003")}
+                >
+                  <span className="material-symbols-outlined text-primary text-[18px]">badge</span>
+                  <span>Member</span>
+                </button>
+                <button
+                  className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => fillSeedCredentials("08000000002")}
+                >
+                  <span className="material-symbols-outlined text-secondary text-[18px]">
+                    qr_code_scanner
+                  </span>
+                  <span>Usher</span>
+                </button>
+                <button
+                  className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => fillSeedCredentials("08000000001")}
+                >
+                  <span className="material-symbols-outlined text-tertiary text-[18px]">
+                    admin_panel_settings
+                  </span>
+                  <span>Admin</span>
+                </button>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="font-label-lg text-label-lg text-on-surface">
-                First time worshipping here?
-              </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">
-                New member or first-time visitor?
-              </span>
+
+            {/* Registration Link Card (Mobile/Tablet) */}
+            <div className="lg:hidden w-full rounded-xl bg-secondary-fixed/30 p-space-md flex items-center justify-between shadow-sm mb-space-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">group_add</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-label-lg text-label-lg text-on-surface">
+                    First time worshipping here?
+                  </span>
+                  <span className="font-body-sm text-body-sm text-on-surface-variant">
+                    New member or first-time visitor?
+                  </span>
+                </div>
+              </div>
+              <Link
+                className="h-10 px-3 rounded-lg bg-surface-container-lowest text-secondary font-label-md text-label-md shadow-sm flex items-center gap-1 shrink-0 hover:bg-surface-container-low"
+                href={`/register${switchQuery}`}
+              >
+                <span>Create account</span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </Link>
+            </div>
+
+            {/* Parish Sanctuary Footer Reassurance (Mobile/Tablet) */}
+            <div className="lg:hidden flex flex-col items-center justify-center text-center gap-1.5 p-space-md rounded-xl bg-surface-container-low">
+              <div className="flex items-center gap-1.5 text-secondary">
+                <span className="material-symbols-outlined text-[18px]">location_on</span>
+                <span className="font-label-md text-label-md font-semibold">
+                  Grace Sanctuary Parish, Lagos
+                </span>
+              </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                Connecting the body of Christ in worship, fellowship, and truth.
+              </p>
             </div>
           </div>
-          <Link
-            className="h-10 px-3 rounded-lg bg-surface-container-lowest text-secondary font-label-md text-label-md shadow-sm flex items-center gap-1 shrink-0 hover:bg-surface-container-low"
-            href={`/register${switchQuery}`}
-          >
-            <span>Create account</span>
-            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-          </Link>
-        </div>
-
-        {/* Parish Sanctuary Footer Reassurance */}
-        <div className="flex flex-col items-center justify-center text-center gap-1.5 p-space-md rounded-xl bg-surface-container-low">
-          <div className="flex items-center gap-1.5 text-secondary">
-            <span className="material-symbols-outlined text-[18px]">location_on</span>
-            <span className="font-label-md text-label-md font-semibold">
-              Grace Sanctuary Parish, Lagos
-            </span>
-          </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Connecting the body of Christ in worship, fellowship, and truth.
-          </p>
         </div>
       </div>
     </main>

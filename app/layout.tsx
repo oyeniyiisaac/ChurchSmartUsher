@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 import { AppProviders } from "./providers";
+import { ResponsivePortalNav } from "../src/components/ResponsivePortalNav";
 
 export const viewport: Viewport = {
   themeColor: "#00236f",
@@ -36,12 +37,15 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           rel="stylesheet"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
       <body className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen antialiased">
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          {children}
+          <ResponsivePortalNav />
+        </AppProviders>
       </body>
     </html>
   );

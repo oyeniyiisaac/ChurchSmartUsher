@@ -90,7 +90,7 @@ export default function DashboardPage(): ReactNode {
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
       {/* Stitch Fixed Top Header (3._member_home) */}
       <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-margin max-w-[600px] mx-auto flex items-center justify-between">
+        <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <img
               alt="ChurchConnect Brand Logo"
@@ -145,13 +145,13 @@ export default function DashboardPage(): ReactNode {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface">
-        <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin space-y-space-lg pb-space-xl">
+      <main className="flex-1 flex flex-col relative w-full pt-16 pb-28 bg-surface">
+        <div className="flex flex-col w-full max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-space-lg pb-space-xl">
           {/* Greeting Header Banner */}
           <div className="pt-space-sm flex items-center justify-between">
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-space-xs">
-                <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight">
+                <h1 className="font-headline-lg-mobile md:text-3xl text-headline-lg-mobile text-on-surface tracking-tight">
                   Good morning, {firstName}
                 </h1>
                 <span aria-hidden="true" className="text-[24px] select-none">
@@ -174,232 +174,265 @@ export default function DashboardPage(): ReactNode {
             </div>
           </div>
 
-          {/* Primary Next Service Focus Card */}
-          <div className="w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md flex flex-col space-y-space-md relative overflow-hidden">
-            <div className="absolute -right-12 -top-12 w-36 h-36 rounded-full bg-secondary-container/10 pointer-events-none blur-2xl" />
-            <div className="flex items-center justify-between gap-space-sm">
-              <div className="inline-flex items-center gap-1.5 bg-tertiary-container/10 text-on-tertiary-fixed-variant px-3 py-1 rounded-full font-label-sm text-label-sm">
-                <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse" />
-                <span>Attendance Open Now</span>
-              </div>
-              <span className="font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">
-                Sanctuary Gate
-              </span>
-            </div>
-            <div>
-              <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-                Sunday First Service
-              </h2>
-              <div className="flex items-center gap-1.5 mt-1 text-on-surface-variant">
-                <span className="material-symbols-outlined text-[18px] text-primary">schedule</span>
-                <p className="font-body-sm text-body-sm">Today, 8:00 AM – 10:30 AM</p>
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5 text-on-surface-variant">
-                <span className="material-symbols-outlined text-[18px] text-secondary">
-                  location_on
-                </span>
-                <p className="font-body-sm text-body-sm">Main Auditorium, Ground Level</p>
-              </div>
-            </div>
-
-            {/* Check-in Visual Guide Box */}
-            <div className="bg-secondary-fixed/30 rounded-lg p-space-sm flex items-start gap-space-sm">
-              <div className="p-2 rounded-lg bg-surface-container-lowest text-secondary shadow-sm shrink-0">
-                <span className="material-symbols-outlined text-[24px]">qr_code_scanner</span>
-              </div>
-              <div className="flex flex-col min-w-0">
-                <p className="font-label-md text-label-md text-on-secondary-fixed font-semibold">
-                  Entrance Scanner Ready
-                </p>
-                <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
-                  Point your phone camera at the rotating QR display on the ushering desk to verify
-                  check-in.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setCameraModalOpen(true)}
-              className="w-full h-12 bg-primary-container text-on-primary rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-2 active:bg-primary transition-colors shadow-sm cursor-pointer"
-              id="openCameraBtn"
-            >
-              <span className="material-symbols-outlined text-[20px]">photo_camera</span>
-              <span>Open Camera to Scan Church QR</span>
-            </button>
-          </div>
-
-          {/* Fidelity & Streak Bento Card */}
-          <div className="w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md flex flex-col space-y-space-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shadow-sm shrink-0">
-                  <span className="material-symbols-outlined text-[22px] material-icon-filled">
-                    local_fire_department
+          {/* Responsive Bento Grid (1 col on mobile, 12 cols on desktop) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              {/* Primary Next Service Focus Card */}
+              <div className="w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md sm:p-6 flex flex-col space-y-space-md relative overflow-hidden">
+                <div className="absolute -right-12 -top-12 w-36 h-36 rounded-full bg-secondary-container/10 pointer-events-none blur-2xl" />
+                <div className="flex items-center justify-between gap-space-sm flex-wrap">
+                  <div className="inline-flex items-center gap-1.5 bg-tertiary-container/10 text-on-tertiary-fixed-variant px-3 py-1 rounded-full font-label-sm text-label-sm">
+                    <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse" />
+                    <span>Attendance Open Now</span>
+                  </div>
+                  <span className="font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">
+                    Sanctuary Gate
                   </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                    6 Sundays in a row
-                  </span>
-                  <span className="font-label-sm text-label-sm text-secondary font-medium">
-                    Faithful Worshipper Level
-                  </span>
+                <div>
+                  <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
+                    Sunday First Service
+                  </h2>
+                  <div className="flex items-center gap-1.5 mt-1 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[18px] text-primary">
+                      schedule
+                    </span>
+                    <p className="font-body-sm text-body-sm">Today, 8:00 AM – 10:30 AM</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[18px] text-secondary">
+                      location_on
+                    </span>
+                    <p className="font-body-sm text-body-sm">Main Auditorium, Ground Level</p>
+                  </div>
+                </div>
+
+                {/* Check-in Visual Guide Box */}
+                <div className="bg-secondary-fixed/30 rounded-lg p-space-sm flex items-start gap-space-sm">
+                  <div className="p-2 rounded-lg bg-surface-container-lowest text-secondary shadow-sm shrink-0">
+                    <span className="material-symbols-outlined text-[24px]">qr_code_scanner</span>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <p className="font-label-md text-label-md text-on-secondary-fixed font-semibold">
+                      Entrance Scanner Ready
+                    </p>
+                    <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+                      Point your phone camera at the rotating QR display on the ushering desk to
+                      verify check-in.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setCameraModalOpen(true)}
+                    className="flex-1 h-12 bg-primary-container text-on-primary rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-2 active:bg-primary transition-colors shadow-sm cursor-pointer px-4"
+                    id="openCameraBtn"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                    <span>Open Camera to Scan Church QR</span>
+                  </button>
+                  <Link
+                    href="/checkin/65f000000000000000000100?t=preview"
+                    className="h-12 px-4 rounded-lg bg-surface-container text-primary font-label-md text-label-md flex items-center justify-center gap-1.5 hover:bg-surface-container-high transition-colors shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">bolt</span>
+                    <span>Quick Check-In</span>
+                  </Link>
                 </div>
               </div>
-              <span className="material-symbols-outlined text-secondary-container text-[28px] material-icon-filled">
-                military_tech
-              </span>
-            </div>
 
-            <div className="px-space-sm py-2 rounded-md bg-surface-container text-on-surface">
-              <p className="font-body-sm text-body-sm italic text-center">
-                “Consistent in fellowship, prayer, and uplifting worship.”
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center pt-1">
-              <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
-                <span className="font-headline-md text-headline-md font-bold text-primary">6</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
-                  Current Streak
-                </span>
-              </div>
-              <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
-                <span className="font-headline-md text-headline-md font-bold text-secondary">
-                  14
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
-                  Best Streak
-                </span>
-              </div>
-              <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
-                <span className="font-headline-md text-headline-md font-bold text-tertiary-container">
-                  3/4
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
-                  This Month
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 pt-1">
-              <div className="flex justify-between items-center text-on-surface">
-                <span className="font-label-md text-label-md font-medium">
-                  Monthly Attendance Pace
-                </span>
-                <span className="font-label-md text-label-md text-secondary font-bold">
-                  75% Consistency
-                </span>
-              </div>
-              <div className="w-full h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
-                <div
-                  className="h-full bg-secondary-container rounded-full transition-all duration-500"
-                  style={{ width: "75%" }}
-                />
-              </div>
-              <p className="font-label-sm text-label-sm text-on-surface-variant text-right">
-                1 more service to achieve Perfect Month badge
-              </p>
-            </div>
-          </div>
-
-          {/* Weekly Congregation Photo Roll Preview */}
-          <div className="w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md flex flex-col space-y-space-sm">
-            <div className="flex items-start justify-between gap-space-xs">
-              <div>
-                <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">
-                  Thanksgiving &amp; Praise Service
-                </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Parish gallery captures from last Sunday
-                </p>
-              </div>
-            </div>
-            <div className="inline-flex items-center gap-1.5 bg-secondary-fixed text-on-secondary-fixed px-2.5 py-1 rounded-full font-label-sm text-label-sm self-start">
-              <span className="material-symbols-outlined text-[14px]">auto_delete</span>
-              <span>Expires in 3 days (Auto-deleted after 7 days)</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm">
-                <img
-                  className="w-full h-full object-cover"
-                  alt="Sanctuary choir praising"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtC6BUBUF1_aOL2qbo6gIh8jrrKT6-nR5LPdMbsFO69djFqDi7qANLdB7XpDjP-Hjltn-9Zvjst8A5W2oBti-_HeVHYD8543RSiK4pKMC0CBECrbOWkkZyK7INcOZKgEkIM_KL1IbwmA43aLr-OpaZMmEE_qY_EcdH41Rktf14hG-taVC8guZ209uf9oOgSXg5WXr1t3lCaxgdKoeVwHw4Z1zUQmSUStPdm1I_ocQ"
-                />
-              </div>
-              <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm">
-                <img
-                  className="w-full h-full object-cover"
-                  alt="Congregation lifting hands in worship"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYy-_MNgo6XM-GzELiwJiaA8dE3K_WOunWcOch9IisUtKoCenoT8W2me2IbwwPmwv_E2nzGGiwYPBClZ1rl05sLnrtp6ew80RCyAzGQFl5dfTnzR_7zOIvZN2xE4FwQPQb-DobM1widX8xLaTuM7kJyTndhshQX-rsfHdMws7Fe2AQJin3Gj6phQe2vmmcf0hjBCDMcQu6raBCcw9p9jhW9tjnE1iTS-lf8PsPUkA"
-                />
-              </div>
-              <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm">
-                <img
-                  className="w-full h-full object-cover"
-                  alt="Thanksgiving dedication prayer"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6IKRWfQcxgdo76OvPmXxSuJuUcIgZCp1T55eEfzJIukO0DWC5r5Un4Z0Nod6y-vWgqe3Gzp04cdBPptbDfFSnsenyI5_Ud-oCqSjc3KAfQftGNXMfAHVcG7Zer-yZ-vS2YrpCF7g8_NmZejZ7KZBeQbaCaZs4II6fcvLNUZqhOn1GyAzCKkuzcOFce-DAmpA75D-wa9UVj4jnvfEWT4csXDZrGQX8MbK8vwAo4FE"
-                />
-                <div className="absolute inset-0 bg-primary/40 flex items-center justify-center">
-                  <span className="font-label-lg text-label-lg text-on-primary font-bold">+15</span>
+              {/* Slice 1 Role Authorization Verification Card */}
+              <div className="w-full bg-surface-container-low rounded-xl p-space-md sm:p-5 flex flex-col gap-space-sm">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-primary">
+                      security
+                    </span>
+                    <span className="font-label-md text-label-md text-on-surface font-semibold">
+                      Role Access &amp; Session Guard
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/usher"
+                      className="font-label-sm text-label-sm text-primary hover:underline"
+                    >
+                      Usher QR
+                    </Link>
+                    <span className="text-outline">·</span>
+                    <Link
+                      href="/usher/live"
+                      className="font-label-sm text-label-sm text-primary hover:underline"
+                    >
+                      Live Roster
+                    </Link>
+                    <span className="text-outline">·</span>
+                    <Link
+                      href="/admin"
+                      className="font-label-sm text-label-sm text-primary hover:underline"
+                    >
+                      Admin
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <Link
-              className="inline-flex items-center justify-between pt-2 text-primary font-label-lg text-label-lg hover:underline"
-              href="/dashboard"
-            >
-              <span>View all photos (18)</span>
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </Link>
-          </div>
-
-          {/* Slice 1 Role Authorization Verification Card */}
-          <div className="w-full bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-primary">security</span>
-                <span className="font-label-md text-label-md text-on-surface font-semibold">
-                  Role Access &amp; Session Guard
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href="/usher"
-                  className="font-label-sm text-label-sm text-primary hover:underline"
+                <button
+                  type="button"
+                  onClick={() => void handleTestAdminGuard()}
+                  className="h-10 px-space-md rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors cursor-pointer"
                 >
-                  Usher QR
-                </Link>
-                <span className="text-outline">·</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    admin_panel_settings
+                  </span>
+                  <span>Test Admin-Only Query (adminOnlyCheck)</span>
+                </button>
+                {adminCheckMessage && (
+                  <div
+                    className={`rounded-lg px-3 py-2 font-body-sm text-body-sm ${
+                      adminCheckError
+                        ? "bg-error-container text-on-error-container"
+                        : "bg-tertiary-fixed/50 text-on-tertiary-fixed-variant"
+                    }`}
+                    role="status"
+                  >
+                    {adminCheckMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              {/* Fidelity & Streak Bento Card */}
+              <div className="w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md sm:p-6 flex flex-col space-y-space-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-space-sm">
+                    <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shadow-sm shrink-0">
+                      <span className="material-symbols-outlined text-[22px] material-icon-filled">
+                        local_fire_department
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
+                        6 Sundays in a row
+                      </span>
+                      <span className="font-label-sm text-label-sm text-secondary font-medium">
+                        Faithful Worshipper Level
+                      </span>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-secondary-container text-[28px] material-icon-filled">
+                    military_tech
+                  </span>
+                </div>
+
+                <div className="px-space-sm py-2 rounded-md bg-surface-container text-on-surface">
+                  <p className="font-body-sm text-body-sm italic text-center">
+                    “Consistent in fellowship, prayer, and uplifting worship.”
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
+                    <span className="font-headline-md text-headline-md font-bold text-primary">
+                      6
+                    </span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
+                      Current Streak
+                    </span>
+                  </div>
+                  <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
+                    <span className="font-headline-md text-headline-md font-bold text-secondary">
+                      14
+                    </span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
+                      Best Streak
+                    </span>
+                  </div>
+                  <div className="bg-surface-container-low rounded-lg p-2 flex flex-col items-center">
+                    <span className="font-headline-md text-headline-md font-bold text-tertiary-container">
+                      3/4
+                    </span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight mt-0.5">
+                      This Month
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex justify-between items-center text-on-surface">
+                    <span className="font-label-md text-label-md font-medium">
+                      Monthly Attendance Pace
+                    </span>
+                    <span className="font-label-md text-label-md text-secondary font-bold">
+                      75% Consistency
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
+                    <div
+                      className="h-full bg-secondary-container rounded-full transition-all duration-500"
+                      style={{ width: "75%" }}
+                    />
+                  </div>
+                  <p className="font-label-sm text-label-sm text-on-surface-variant text-right">
+                    1 more service to achieve Perfect Month badge
+                  </p>
+                </div>
+              </div>
+
+              {/* Weekly Congregation Photo Roll Preview */}
+              <div className="w-full bg-surface-container-lowest rounded-xl shadow-md p-space-md sm:p-6 flex flex-col space-y-space-sm">
+                <div className="flex items-start justify-between gap-space-xs">
+                  <div>
+                    <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">
+                      Thanksgiving &amp; Praise Service
+                    </h3>
+                    <p className="font-body-sm text-body-sm text-on-surface-variant">
+                      Parish gallery captures from last Sunday
+                    </p>
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-1.5 bg-secondary-fixed text-on-secondary-fixed px-2.5 py-1 rounded-full font-label-sm text-label-sm self-start">
+                  <span className="material-symbols-outlined text-[14px]">auto_delete</span>
+                  <span>Expires in 3 days (Auto-deleted after 7 days)</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm">
+                    <img
+                      className="w-full h-full object-cover"
+                      alt="Sanctuary choir praising"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtC6BUBUF1_aOL2qbo6gIh8jrrKT6-nR5LPdMbsFO69djFqDi7qANLdB7XpDjP-Hjltn-9Zvjst8A5W2oBti-_HeVHYD8543RSiK4pKMC0CBECrbOWkkZyK7INcOZKgEkIM_KL1IbwmA43aLr-OpaZMmEE_qY_EcdH41Rktf14hG-taVC8guZ209uf9oOgSXg5WXr1t3lCaxgdKoeVwHw4Z1zUQmSUStPdm1I_ocQ"
+                    />
+                  </div>
+                  <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm">
+                    <img
+                      className="w-full h-full object-cover"
+                      alt="Congregation lifting hands in worship"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYy-_MNgo6XM-GzELiwJiaA8dE3K_WOunWcOch9IisUtKoCenoT8W2me2IbwwPmwv_E2nzGGiwYPBClZ1rl05sLnrtp6ew80RCyAzGQFl5dfTnzR_7zOIvZN2xE4FwQPQb-DobM1widX8xLaTuM7kJyTndhshQX-rsfHdMws7Fe2AQJin3Gj6phQe2vmmcf0hjBCDMcQu6raBCcw9p9jhW9tjnE1iTS-lf8PsPUkA"
+                    />
+                  </div>
+                  <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm">
+                    <img
+                      className="w-full h-full object-cover"
+                      alt="Thanksgiving dedication prayer"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6IKRWfQcxgdo76OvPmXxSuJuUcIgZCp1T55eEfzJIukO0DWC5r5Un4Z0Nod6y-vWgqe3Gzp04cdBPptbDfFSnsenyI5_Ud-oCqSjc3KAfQftGNXMfAHVcG7Zer-yZ-vS2YrpCF7g8_NmZejZ7KZBeQbaCaZs4II6fcvLNUZqhOn1GyAzCKkuzcOFce-DAmpA75D-wa9UVj4jnvfEWT4csXDZrGQX8MbK8vwAo4FE"
+                    />
+                    <div className="absolute inset-0 bg-primary/40 flex items-center justify-center">
+                      <span className="font-label-lg text-label-lg text-on-primary font-bold">
+                        +15
+                      </span>
+                    </div>
+                  </div>
+                </div>
                 <Link
-                  href="/admin"
-                  className="font-label-sm text-label-sm text-primary hover:underline"
+                  className="inline-flex items-center justify-between pt-2 text-primary font-label-lg text-label-lg hover:underline"
+                  href="/photos"
                 >
-                  Admin
+                  <span>View all photos (18)</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </Link>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => void handleTestAdminGuard()}
-              className="h-10 px-space-md rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
-              <span>Test Admin-Only Query (adminOnlyCheck)</span>
-            </button>
-            {adminCheckMessage && (
-              <div
-                className={`rounded-lg px-3 py-2 font-body-sm text-body-sm ${
-                  adminCheckError
-                    ? "bg-error-container text-on-error-container"
-                    : "bg-tertiary-fixed/50 text-on-tertiary-fixed-variant"
-                }`}
-                role="status"
-              >
-                {adminCheckMessage}
-              </div>
-            )}
           </div>
         </div>
 
@@ -444,7 +477,7 @@ export default function DashboardPage(): ReactNode {
       </main>
 
       {/* Stitch Persistent 4-Slot Member Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
+      <nav className="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
         <div className="flex justify-around items-center h-16 max-w-[600px] mx-auto px-space-xs">
           <Link
             aria-current="page"

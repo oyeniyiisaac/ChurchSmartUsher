@@ -252,7 +252,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface antialiased min-h-screen">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
@@ -354,8 +354,8 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
       </aside>
 
       {/* Main Content Area */}
-      <div className="pl-72">
-        <header className="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-xl">
+      <div className="lg:pl-72">
+        <header className="fixed top-0 left-0 lg:left-72 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-3">
           <div className="flex items-center gap-space-md max-w-md w-full">
             <div className="relative w-full flex items-center">
               <span className="material-symbols-outlined absolute left-3 text-outline text-[20px] pointer-events-none">
@@ -398,9 +398,9 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
           </div>
         </header>
 
-        <main className="relative pt-16 bg-background w-full min-h-screen">
+        <main className="relative pt-16 pb-24 lg:pb-8 bg-background w-full min-h-screen">
           <div className="flex flex-col w-full">
-            <div className="w-full px-space-lg lg:px-space-xl py-space-lg flex flex-col gap-space-lg">
+            <div className="w-full px-4 sm:px-6 lg:px-space-xl py-space-lg flex flex-col gap-space-lg">
               {statusBanner && (
                 <div className="bg-primary text-on-primary px-space-md py-2.5 rounded-xl shadow-md flex items-center justify-between">
                   <span className="font-label-md text-label-md">{statusBanner}</span>

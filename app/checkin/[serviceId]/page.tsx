@@ -130,7 +130,7 @@ function CheckinPageContent(): ReactNode {
     return (
       <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
         <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-          <div className="h-16 px-margin max-w-[600px] mx-auto flex items-center justify-between">
+          <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-3xl lg:max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-space-sm">
               <button
                 aria-label="Go back"
@@ -169,7 +169,7 @@ function CheckinPageContent(): ReactNode {
         </header>
 
         <main className="flex-1 flex flex-col relative w-full pt-16 bg-surface pb-safe">
-          <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin pb-space-2xl space-y-space-lg">
+          <div className="flex flex-col w-full max-w-[600px] md:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 pb-space-2xl space-y-space-lg">
             {/* Subtle Ambient Glow & Celebratory Badge */}
             <div className="relative flex flex-col items-center text-center pt-space-md">
               <div className="relative flex items-center justify-center mb-space-md">
@@ -344,7 +344,7 @@ function CheckinPageContent(): ReactNode {
     return (
       <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
         <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-          <div className="h-16 px-margin max-w-[600px] mx-auto flex items-center justify-between">
+          <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-3xl lg:max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-space-sm">
               <button
                 aria-label="Go back"
@@ -376,7 +376,7 @@ function CheckinPageContent(): ReactNode {
         </header>
 
         <main className="flex-1 flex flex-col relative w-full pt-16 bg-surface pb-safe">
-          <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin pt-space-md pb-space-lg gap-space-md">
+          <div className="flex flex-col w-full max-w-[600px] md:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 pt-space-md pb-space-lg gap-space-md">
             <div className="flex flex-col gap-space-xs">
               <div className="inline-flex items-center gap-space-xs self-start px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">
                 <span className="material-symbols-outlined text-[16px] text-primary material-icon-filled">
@@ -668,7 +668,7 @@ function CheckinPageContent(): ReactNode {
   return (
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
       <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-margin max-w-[600px] mx-auto flex items-center justify-between">
+        <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-3xl lg:max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <Link
               href="/usher"
@@ -704,7 +704,7 @@ function CheckinPageContent(): ReactNode {
       </header>
 
       <main className="flex-1 flex flex-col relative w-full pt-16 bg-surface pb-safe">
-        <div className="flex flex-col w-full max-w-[600px] mx-auto px-margin pb-space-2xl">
+        <div className="flex flex-col w-full max-w-[600px] md:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 pb-space-2xl">
           {/* Subtle Sanctuary Ambient Glow & Motif */}
           <div className="flex flex-col items-center text-center mt-space-sm mb-space-md">
             <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-surface-container shadow-sm mb-space-sm">
