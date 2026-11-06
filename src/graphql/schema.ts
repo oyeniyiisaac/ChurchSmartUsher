@@ -347,6 +347,14 @@ export const typeDefs = `#graphql
     maxRadiusMeters: Int!
   }
 
+  type CheckinCodeDispatchResult {
+    serviceId: ID!
+    channel: String!
+    maskedDestination: String!
+    expiresAt: String!
+    code: String!
+  }
+
   input UpdateParishSettingsInput {
     parishName: String
     denomination: String
@@ -399,5 +407,7 @@ export const typeDefs = `#graphql
     moderateServicePhoto(photoId: ID!, action: String!): ServicePhoto!
     purgeExpiredPhotos: PurgePhotosResult!
     updateParishSettings(input: UpdateParishSettingsInput!): ParishSettings!
+    requestCheckinCode(serviceId: ID!, channel: String): CheckinCodeDispatchResult!
+    verifyCheckinCode(serviceId: ID!, code: String!): MarkPresentResult!
   }
 `;

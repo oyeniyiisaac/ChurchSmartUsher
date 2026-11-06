@@ -68,6 +68,11 @@ import {
   updateParishSettings,
   verifySanctuaryGeofence,
 } from "@/services/settings";
+import {
+  type CheckinCodeDispatchResult,
+  requestCheckinCode,
+  verifyCheckinCode,
+} from "@/services/checkin-code";
 import type { ServiceType } from "@/db/models";
 import type {
   ActivityInput,
@@ -410,6 +415,24 @@ export const resolvers = {
     ): Promise<ParishSettingsRecord> => {
       requireRole(context.member ?? null, ["ADMIN"]);
       return updateParishSettings(args.input);
+    },
+
+    requestCheckinCode: async (
+      _parent: unknown,
+      args: { serviceId: string; channel?: string },
+      context: GraphQLContext,
+    ): Promise<CheckinCodeDispatchResult> => {
+      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
+      return requestCheckinCode(authenticated, args);
+    },
+
+    verifyCheckinCode: async (
+      _parent: unknown,
+      args: { serviceId: string; code: string },
+      context: GraphQLContext,
+    ): Promise<MarkPresentResult> => {
+      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
+      return verifyCheckinCode(authenticated, args);
     },
   },
 };
