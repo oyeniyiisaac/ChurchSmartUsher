@@ -107,6 +107,25 @@ export const createServiceInputSchema = z.object({
   usherStation: z.string().trim().min(1).default("Door A (Main Entrance)"),
 });
 
+export const markPresentInputSchema = z.object({
+  serviceId: z.string().trim().min(1, "Service ID is required."),
+  token: z.string().trim().min(1, "QR token is required."),
+});
+
+export const markManualPresentInputSchema = z.object({
+  serviceId: z.string().trim().min(1, "Service ID is required."),
+  memberId: z.string().trim().min(1, "Member ID is required."),
+  station: z.string().trim().min(1).default("Usher Terminal 02"),
+});
+
+export const registerGuestInputSchema = z.object({
+  serviceId: z.string().trim().min(1, "Service ID is required."),
+  fullName: z.string().trim().min(2, "Guest full name must be at least 2 characters."),
+  phone: z.string().trim().min(10, "Phone number is required.").transform(normalizePhoneNumber),
+  invitedBy: z.string().trim().max(120).optional().default(""),
+  station: z.string().trim().min(1).default("Usher Terminal 02"),
+});
+
 export type RegisterInput = z.input<typeof registerInputSchema>;
 export type LoginInput = z.input<typeof loginInputSchema>;
 export type UpdateProfileInput = z.input<typeof updateProfileInputSchema>;
@@ -114,3 +133,6 @@ export type DepartmentInput = z.input<typeof departmentInputSchema>;
 export type ActivityInput = z.input<typeof activityInputSchema>;
 export type AssignAffiliationsInput = z.input<typeof assignAffiliationsInputSchema>;
 export type CreateServiceInput = z.input<typeof createServiceInputSchema>;
+export type MarkPresentInput = z.input<typeof markPresentInputSchema>;
+export type MarkManualPresentInput = z.input<typeof markManualPresentInputSchema>;
+export type RegisterGuestInput = z.input<typeof registerGuestInputSchema>;

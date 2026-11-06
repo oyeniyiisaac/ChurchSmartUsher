@@ -12,6 +12,9 @@ export type ServiceType = (typeof SERVICE_TYPES)[number];
 export const SERVICE_STATUSES = ["SCHEDULED", "OPEN", "CLOSED"] as const;
 export type ServiceStatus = (typeof SERVICE_STATUSES)[number];
 
+export const ATTENDANCE_METHODS = ["QR", "MANUAL", "GUEST"] as const;
+export type AttendanceMethod = (typeof ATTENDANCE_METHODS)[number];
+
 const departmentSchema = new Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
@@ -91,6 +94,44 @@ const serviceSchema = new Schema(
   { timestamps: true },
 );
 
+const attendanceSchema = new Schema(
+  {
+    serviceId: {
+      type: Schema.Types.ObjectId,
+      ref: "Service",
+      required: true,
+      index: true,
+    },
+    memberId: {
+      type: Schema.Types.ObjectId,
+      ref: "Member",
+      required: false,
+      index: true,
+    },
+    memberName: { type: String, required: true, trim: true },
+    memberPhone: { type: String, default: "", trim: true },
+    memberDepartment: { type: String, default: "Sanctuary Choir", trim: true },
+    memberCode: { type: String, default: "", trim: true },
+    isGuest: { type: Boolean, default: false, required: true },
+    invitedBy: { type: String, default: "", trim: true },
+    method: { type: String, enum: ATTENDANCE_METHODS, default: "QR", required: true },
+    markedByUsherId: { type: Schema.Types.ObjectId, ref: "Member", required: false },
+    markedByUsherName: { type: String, default: "", trim: true },
+    station: { type: String, default: "Door A (Main Entrance)", required: true, trim: true },
+    checkedInAt: { type: Date, default: () => new Date(), required: true },
+  },
+  { timestamps: true },
+);
+
+// Unique compound index: one attendance record per (serviceId, memberId)
+attendanceSchema.index(
+  { serviceId: 1, memberId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { memberId: { $type: "objectId" } },
+  },
+);
+
 export type DepartmentDocument = InferSchemaType<typeof departmentSchema> & {
   _id: mongoose.Types.ObjectId;
 };
@@ -104,6 +145,9 @@ export type SessionDocument = InferSchemaType<typeof sessionSchema> & {
   _id: mongoose.Types.ObjectId;
 };
 export type ServiceDocument = InferSchemaType<typeof serviceSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+export type AttendanceDocument = InferSchemaType<typeof attendanceSchema> & {
   _id: mongoose.Types.ObjectId;
 };
 
@@ -126,3 +170,7 @@ export const Session: Model<SessionDocument> =
 export const Service: Model<ServiceDocument> =
   (mongoose.models.Service as Model<ServiceDocument>) ||
   mongoose.model<ServiceDocument>("Service", serviceSchema);
+
+export const Attendance: Model<AttendanceDocument> =
+  (mongoose.models.Attendance as Model<AttendanceDocument>) ||
+  mongoose.model<AttendanceDocument>("Attendance", attendanceSchema);

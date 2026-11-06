@@ -355,7 +355,7 @@ export default function UsherPage(): ReactNode {
           {/* Operational Action Stack (Ushers) */}
           <div className="flex flex-col gap-space-sm mt-space-lg">
             <Link
-              href="/services"
+              href="/usher/live"
               className="h-12 w-full rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center justify-between px-space-md shadow-sm transition-all active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center gap-space-sm">
@@ -368,7 +368,7 @@ export default function UsherPage(): ReactNode {
             </Link>
 
             <Link
-              href="/services"
+              href="/usher/live"
               className="h-12 w-full rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg flex items-center justify-between px-space-md shadow-sm transition-all active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center gap-space-sm">

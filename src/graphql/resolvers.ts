@@ -1,5 +1,15 @@
 import type { AuthenticatedMember } from "@/auth/session";
 import {
+  type AttendanceRecordInfo,
+  getServiceAttendance,
+  markManualPresent,
+  markPresent,
+  type MarkPresentResult,
+  registerGuestAttendance,
+  type ServiceAttendanceSummary,
+  undoAttendance,
+} from "@/services/attendance";
+import {
   type AuthPayload,
   loginMember,
   logoutMember,
@@ -37,6 +47,7 @@ import type {
   CreateServiceInput,
   DepartmentInput,
   LoginInput,
+  RegisterGuestInput,
   RegisterInput,
   UpdateProfileInput,
 } from "@/services/validation";
@@ -120,6 +131,15 @@ export const resolvers = {
       context: GraphQLContext,
     ): Promise<CheckinPreviewPayload> => {
       return getCheckinPreview(args.serviceId, args.token, context.member ?? null);
+    },
+
+    serviceAttendance: async (
+      _parent: unknown,
+      args: { serviceId: string },
+      context: GraphQLContext,
+    ): Promise<ServiceAttendanceSummary> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return getServiceAttendance(args.serviceId);
     },
 
     adminOnlyCheck: (_parent: unknown, _args: unknown, context: GraphQLContext): string => {
@@ -214,6 +234,42 @@ export const resolvers = {
     ): Promise<ServiceInfo> => {
       requireRole(context.member ?? null, ["USHER", "ADMIN"]);
       return closeService(args.serviceId);
+    },
+
+    markPresent: async (
+      _parent: unknown,
+      args: { serviceId: string; token: string },
+      context: GraphQLContext,
+    ): Promise<MarkPresentResult> => {
+      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
+      return markPresent(authenticated, args);
+    },
+
+    markManualPresent: async (
+      _parent: unknown,
+      args: { serviceId: string; memberId: string; station?: string },
+      context: GraphQLContext,
+    ): Promise<MarkPresentResult> => {
+      const usher = requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return markManualPresent(usher, args);
+    },
+
+    registerGuestAttendance: async (
+      _parent: unknown,
+      args: { input: RegisterGuestInput },
+      context: GraphQLContext,
+    ): Promise<AttendanceRecordInfo> => {
+      const usher = requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return registerGuestAttendance(usher, args.input);
+    },
+
+    undoAttendance: async (
+      _parent: unknown,
+      args: { attendanceId: string },
+      context: GraphQLContext,
+    ): Promise<boolean> => {
+      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      return undoAttendance(args.attendanceId);
     },
   },
 };

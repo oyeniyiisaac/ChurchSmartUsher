@@ -33,6 +33,7 @@ export type ServiceQrPayload = {
   status: ServiceStatus;
   token: string;
   checkinPath: string;
+  checkinUrl: string;
   expiresInSeconds: number;
   slot: number;
 };
@@ -186,12 +187,14 @@ export async function getServiceQr(serviceId: string): Promise<ServiceQrPayload>
       const doc = await Service.findById(serviceId);
       if (doc) {
         const token = signServiceToken(doc._id.toString(), doc.qrSecret, slot);
+        const checkinPath = buildCheckinUrl(doc._id.toString(), token);
         return {
           serviceId: doc._id.toString(),
           serviceName: doc.name,
           status: doc.status,
           token,
-          checkinPath: buildCheckinUrl(doc._id.toString(), token),
+          checkinPath,
+          checkinUrl: checkinPath,
           expiresInSeconds,
           slot,
         };
@@ -202,12 +205,14 @@ export async function getServiceQr(serviceId: string): Promise<ServiceQrPayload>
   }
 
   const token = signServiceToken(serviceId, FALLBACK_QR_SECRET, slot);
+  const checkinPath = buildCheckinUrl(serviceId, token);
   return {
     serviceId,
     serviceName: FALLBACK_ACTIVE_SERVICE.name,
     status: FALLBACK_ACTIVE_SERVICE.status,
     token,
-    checkinPath: buildCheckinUrl(serviceId, token),
+    checkinPath,
+    checkinUrl: checkinPath,
     expiresInSeconds,
     slot,
   };

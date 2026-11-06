@@ -283,6 +283,7 @@ const INITIAL_STREAM: StreamItem[] = [
 
 export default function ServicesPage(): ReactNode {
   const { data } = useQuery<ServicesDeskData>(SERVICES_DESK_QUERY, {
+    pollInterval: 5000,
     fetchPolicy: "network-only",
   });
   const activeService = data?.activeService ?? null;

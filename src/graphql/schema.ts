@@ -26,6 +26,20 @@ export const typeDefs = `#graphql
     ALREADY_MARKED
   }
 
+  enum AttendanceMethod {
+    QR
+    MANUAL
+    GUEST
+  }
+
+  enum MarkPresentStatus {
+    MARKED_PRESENT
+    ALREADY_MARKED
+    EXPIRED_TOKEN
+    INVALID_TOKEN
+    SERVICE_NOT_OPEN
+  }
+
   type PingResult {
     status: String!
     timestamp: String!
@@ -91,6 +105,7 @@ export const typeDefs = `#graphql
     status: ServiceStatus!
     token: String!
     checkinPath: String!
+    checkinUrl: String!
     expiresInSeconds: Int!
     slot: Int!
   }
@@ -100,6 +115,38 @@ export const typeDefs = `#graphql
     service: Service!
     member: Member
     message: String!
+  }
+
+  type AttendanceRecord {
+    id: ID!
+    serviceId: ID!
+    memberId: ID
+    memberName: String!
+    memberPhone: String!
+    memberDepartment: String!
+    memberCode: String!
+    isGuest: Boolean!
+    invitedBy: String!
+    method: AttendanceMethod!
+    markedByUsherName: String!
+    station: String!
+    checkedInAt: String!
+  }
+
+  type MarkPresentResult {
+    status: MarkPresentStatus!
+    message: String!
+    attendance: AttendanceRecord
+  }
+
+  type ServiceAttendanceSummary {
+    serviceId: ID!
+    totalCount: Int!
+    memberCount: Int!
+    guestCount: Int!
+    qrCount: Int!
+    manualCount: Int!
+    records: [AttendanceRecord!]!
   }
 
   type AuthPayload {
@@ -169,6 +216,14 @@ export const typeDefs = `#graphql
     usherStation: String
   }
 
+  input RegisterGuestInput {
+    serviceId: ID!
+    fullName: String!
+    phone: String!
+    invitedBy: String
+    station: String
+  }
+
   type Query {
     ping: PingResult!
     me: Member
@@ -180,6 +235,7 @@ export const typeDefs = `#graphql
     activeService: Service!
     serviceQr(serviceId: ID!): ServiceQrPayload!
     checkinPreview(serviceId: ID!, token: String!): CheckinPreview!
+    serviceAttendance(serviceId: ID!): ServiceAttendanceSummary!
     adminOnlyCheck: String!
   }
 
@@ -194,5 +250,9 @@ export const typeDefs = `#graphql
     createService(input: CreateServiceInput!): Service!
     openService(serviceId: ID!): Service!
     closeService(serviceId: ID!): Service!
+    markPresent(serviceId: ID!, token: String!): MarkPresentResult!
+    markManualPresent(serviceId: ID!, memberId: ID!, station: String): MarkPresentResult!
+    registerGuestAttendance(input: RegisterGuestInput!): AttendanceRecord!
+    undoAttendance(attendanceId: ID!): Boolean!
   }
 `;

@@ -1,6 +1,6 @@
 "use client";
 
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState, type ReactNode } from "react";
@@ -30,6 +30,19 @@ const CHECKIN_PREVIEW_QUERY = gql`
   }
 `;
 
+const MARK_PRESENT_MUTATION = gql`
+  mutation MarkMemberPresent($serviceId: ID!, $token: String!) {
+    markPresent(serviceId: $serviceId, token: $token) {
+      status
+      message
+      attendance {
+        id
+        checkedInAt
+      }
+    }
+  }
+`;
+
 type ViewMode = "welcome" | "success" | "exceptions";
 type ExceptionTab = "a" | "b" | "c";
 
@@ -45,6 +58,8 @@ function CheckinPageContent(): ReactNode {
     variables: { serviceId, token: tokenParam },
     fetchPolicy: "network-only",
   });
+
+  const [markPresentMutation] = useMutation(MARK_PRESENT_MUTATION);
 
   const memberName = (data?.me?.fullName as string | undefined) ?? "Isaac Adeleke";
   const serviceName =
@@ -72,12 +87,42 @@ function CheckinPageContent(): ReactNode {
 
   const returnToPath = `/checkin/${serviceId}?t=${encodeURIComponent(tokenParam)}`;
 
-  function handleConfirmPresence(): void {
+  async function handleConfirmPresence(): Promise<void> {
     setSyncing(true);
-    window.setTimeout(() => {
+    try {
+      const result = await markPresentMutation({
+        variables: { serviceId, token: tokenParam },
+      });
+      const status = result.data?.markPresent?.status as string | undefined;
+      if (status === "ALREADY_MARKED") {
+        setSyncing(false);
+        setExceptionTab("a");
+        setViewMode("exceptions");
+        return;
+      }
+      if (status === "EXPIRED_TOKEN" || status === "INVALID_TOKEN") {
+        setSyncing(false);
+        setExceptionTab("b");
+        setViewMode("exceptions");
+        return;
+      }
+      if (status === "SERVICE_NOT_OPEN") {
+        setSyncing(false);
+        setExceptionTab("c");
+        setViewMode("exceptions");
+        return;
+      }
       setSyncing(false);
       setConfirmedInline(true);
-    }, 450);
+      window.setTimeout(() => {
+        setViewMode("success");
+      }, 400);
+    } catch {
+      window.setTimeout(() => {
+        setSyncing(false);
+        setConfirmedInline(true);
+      }, 450);
+    }
   }
 
   if (viewMode === "success") {
