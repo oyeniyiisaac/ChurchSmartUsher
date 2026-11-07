@@ -12,12 +12,15 @@ import {
   signServiceToken,
   verifyServiceToken,
 } from "./qr";
+import { computeServiceCalendarTag } from "./service-tag";
 import { reconcileServiceStreaksOnClose } from "./streak";
 import { type CreateServiceInput, createServiceInputSchema } from "./validation";
 
 export type ServiceInfo = {
   id: string;
   name: string;
+  serviceTag: string;
+  sermonTopic: string;
   serviceType: ServiceType;
   serviceDate: string;
   startTime: string;
@@ -54,11 +57,15 @@ export type CheckinPreviewPayload = {
   message: string;
 };
 
+const defaultServiceDate = new Date().toISOString().slice(0, 10);
+
 const FALLBACK_ACTIVE_SERVICE: ServiceInfo = {
   id: "65f000000000000000000100",
   name: "Sunday Worship Service",
+  serviceTag: computeServiceCalendarTag(defaultServiceDate, "SUNDAY"),
+  sermonTopic: "",
   serviceType: "SUNDAY",
-  serviceDate: new Date().toISOString().slice(0, 10),
+  serviceDate: defaultServiceDate,
   startTime: "8:30 AM",
   location: "RCCG JESUS HOUSE, OGBOMOSHO Auditorium",
   usherStation: "Door A (Main Entrance)",
@@ -70,9 +77,15 @@ const FALLBACK_ACTIVE_SERVICE: ServiceInfo = {
 const FALLBACK_QR_SECRET = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
 
 function toServiceInfo(doc: ServiceDocument): ServiceInfo {
+  const computedTag =
+    doc.serviceTag && doc.serviceTag.trim().length > 0
+      ? doc.serviceTag
+      : computeServiceCalendarTag(doc.serviceDate, doc.serviceType);
   return {
     id: doc._id.toString(),
     name: doc.name,
+    serviceTag: computedTag,
+    sermonTopic: doc.sermonTopic ?? "",
     serviceType: doc.serviceType,
     serviceDate: doc.serviceDate,
     startTime: doc.startTime ?? "8:30 AM",
@@ -118,14 +131,31 @@ export async function createService(rawInput: CreateServiceInput): Promise<Servi
   const parsed = createServiceInputSchema.parse(rawInput);
   await connectToDatabase();
 
+  const resolvedTag =
+    parsed.serviceTag && parsed.serviceTag.trim().length > 0
+      ? parsed.serviceTag.trim()
+      : computeServiceCalendarTag(parsed.serviceDate, parsed.serviceType);
+
+  const resolvedTopic = (parsed.sermonTopic ?? "").trim();
+
+  if (parsed.openImmediately) {
+    await Service.updateMany(
+      { status: "OPEN" },
+      { $set: { status: "CLOSED", closedAt: new Date() } },
+    );
+  }
+
   const created = await Service.create({
     name: parsed.name,
+    serviceTag: resolvedTag,
+    sermonTopic: resolvedTopic,
     serviceType: parsed.serviceType,
     serviceDate: parsed.serviceDate,
     startTime: parsed.startTime,
     location: parsed.location,
     usherStation: parsed.usherStation,
-    status: "SCHEDULED",
+    status: parsed.openImmediately ? "OPEN" : "SCHEDULED",
+    openedAt: parsed.openImmediately ? new Date() : undefined,
     qrSecret: generateServiceQrSecret(),
   });
 

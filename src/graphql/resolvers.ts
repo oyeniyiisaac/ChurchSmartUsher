@@ -344,7 +344,7 @@ export const resolvers = {
       args: { input: CreateServiceInput },
       context: GraphQLContext,
     ): Promise<ServiceInfo> => {
-      requireRole(context.member ?? null, ["ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return createService(args.input);
     },
 

@@ -2,9 +2,11 @@
 
 import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { hasUsherAccess } from "@/auth/permissions";
+import { ServiceTagQrModal } from "@/components/ServiceTagQrModal";
 
 const USHER_DASHBOARD_QUERY = gql`
   query UsherDashboard {
@@ -20,6 +22,8 @@ const USHER_DASHBOARD_QUERY = gql`
     activeService {
       id
       name
+      serviceTag
+      sermonTopic
       serviceType
       serviceDate
       startTime
@@ -76,6 +80,8 @@ interface UsherDashboardData {
   activeService: {
     id: string;
     name: string;
+    serviceTag?: string | null;
+    sermonTopic?: string | null;
     serviceType: string;
     serviceDate: string;
     startTime: string;
@@ -96,18 +102,21 @@ interface ServiceQrData {
 }
 
 export default function UsherPage(): ReactNode {
-  const { data } = useQuery<UsherDashboardData>(USHER_DASHBOARD_QUERY, {
+  const { data, refetch: refetchDashboard } = useQuery<UsherDashboardData>(USHER_DASHBOARD_QUERY, {
     fetchPolicy: "network-only",
   });
   const member = data?.me ?? null;
   const activeService = data?.activeService ?? null;
   const activeServiceId = activeService?.id ?? "65f000000000000000000100";
 
-  const { data: attendanceData } = useQuery(SERVICE_ATTENDANCE_SUMMARY_QUERY, {
-    variables: { serviceId: activeServiceId },
-    pollInterval: 5000,
-    fetchPolicy: "network-only",
-  });
+  const { data: attendanceData, refetch: refetchAttendance } = useQuery(
+    SERVICE_ATTENDANCE_SUMMARY_QUERY,
+    {
+      variables: { serviceId: activeServiceId },
+      pollInterval: 5000,
+      fetchPolicy: "network-only",
+    },
+  );
   const totalPresent = (attendanceData?.serviceAttendance?.totalCount as number | undefined) ?? 0;
   const totalMembers = (attendanceData?.serviceAttendance?.memberCount as number | undefined) ?? 0;
   const totalGuests = (attendanceData?.serviceAttendance?.guestCount as number | undefined) ?? 0;
@@ -123,7 +132,13 @@ export default function UsherPage(): ReactNode {
   const [timeLeft, setTimeLeft] = useState<number>(42);
   const [projectorOpen, setProjectorOpen] = useState<boolean>(false);
   const [closeModalOpen, setCloseModalOpen] = useState<boolean>(false);
+  const [tagServiceModalOpen, setTagServiceModalOpen] = useState<boolean>(false);
   const [sessionClosed, setSessionClosed] = useState<boolean>(false);
+  const [origin, setOrigin] = useState<string>("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     if (qrData?.serviceQr?.expiresInSeconds) {
@@ -156,6 +171,12 @@ export default function UsherPage(): ReactNode {
     .toUpperCase();
 
   const checkinHref = qrData?.serviceQr?.checkinUrl ?? `/checkin/${activeServiceId}?t=preview`;
+  const fullCheckinQrValue =
+    checkinHref.startsWith("http://") || checkinHref.startsWith("https://")
+      ? checkinHref
+      : origin
+        ? `${origin}${checkinHref}`
+        : checkinHref;
 
   return (
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
@@ -206,15 +227,25 @@ export default function UsherPage(): ReactNode {
                   Door A · Main Auditorium
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setProjectorOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm transition-colors shadow-sm cursor-pointer"
-                id="projectorToggle"
-              >
-                <span className="material-symbols-outlined text-[18px]">present_to_all</span>
-                <span>Projector Mode</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setTagServiceModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-on-primary hover:bg-primary-container font-label-sm text-label-sm font-semibold transition-colors shadow-sm cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  <span>Tag Service &amp; New QR</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProjectorOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm transition-colors shadow-sm cursor-pointer"
+                  id="projectorToggle"
+                >
+                  <span className="material-symbols-outlined text-[18px]">present_to_all</span>
+                  <span>Projector Mode</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -222,6 +253,18 @@ export default function UsherPage(): ReactNode {
             {/* Left / Center Stage QR Card on Desktop */}
             <div className="lg:col-span-7 flex flex-col items-center w-full" id="qrStageContainer">
               <div className="w-full bg-surface-container-lowest rounded-xl p-space-lg sm:p-8 shadow-md flex flex-col items-center text-center">
+                {activeService?.serviceTag && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-bold mb-2">
+                    <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                    <span>{activeService.serviceTag}</span>
+                  </div>
+                )}
+                {activeService?.sermonTopic && (
+                  <p className="font-headline-sm text-headline-sm text-primary font-bold mb-3">
+                    Topic: “{activeService.sermonTopic}”
+                  </p>
+                )}
+
                 <div
                   className={`flex items-center justify-center gap-2 mb-space-md px-3 py-1 rounded-full ${
                     sessionClosed
@@ -240,67 +283,16 @@ export default function UsherPage(): ReactNode {
                   )}
                 </div>
 
-                {/* High Contrast Giant QR Code Card (Stitch SVG) */}
-                <div className="relative p-space-md bg-surface-container-lowest rounded-xl shadow-inner flex items-center justify-center">
-                  <svg
-                    className="w-[250px] h-[250px] sm:w-[280px] sm:h-[280px] transition-transform duration-300"
-                    fill="none"
-                    id="qrSvg"
-                    viewBox="0 0 240 240"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <rect fill="#FFFFFF" height="240" rx="8" width="240" />
-                    <rect fill="#00236f" height="56" rx="8" width="56" x="16" y="16" />
-                    <rect fill="#FFFFFF" height="40" rx="4" width="40" x="24" y="24" />
-                    <rect fill="#00236f" height="24" rx="2" width="24" x="32" y="32" />
-                    <rect fill="#00236f" height="56" rx="8" width="56" x="168" y="16" />
-                    <rect fill="#FFFFFF" height="40" rx="4" width="40" x="176" y="24" />
-                    <rect fill="#00236f" height="24" rx="2" width="24" x="184" y="32" />
-                    <rect fill="#00236f" height="56" rx="8" width="56" x="16" y="168" />
-                    <rect fill="#FFFFFF" height="40" rx="4" width="40" x="24" y="176" />
-                    <rect fill="#00236f" height="24" rx="2" width="24" x="32" y="184" />
-                    <g fill="#00236f">
-                      <rect height="10" rx="1" width="10" x="88" y="20" />
-                      <rect height="10" rx="1" width="10" x="106" y="20" />
-                      <rect height="10" rx="1" width="10" x="124" y="20" />
-                      <rect height="10" rx="1" width="10" x="142" y="28" />
-                      <rect height="10" rx="1" width="10" x="88" y="38" />
-                      <rect height="10" rx="1" width="10" x="124" y="38" />
-                      <rect height="10" rx="1" width="10" x="106" y="54" />
-                      <rect height="10" rx="1" width="10" x="142" y="54" />
-                      <rect height="18" rx="2" width="18" x="88" y="88" />
-                      <rect height="12" rx="1" width="12" x="114" y="88" />
-                      <rect height="18" rx="2" width="18" x="134" y="88" />
-                      <rect height="12" rx="1" width="12" x="160" y="88" />
-                      <rect height="12" rx="1" width="12" x="20" y="88" />
-                      <rect height="18" rx="2" width="18" x="40" y="88" />
-                      <rect height="12" rx="1" width="12" x="66" y="88" />
-                      <rect height="18" rx="2" width="18" x="20" y="114" />
-                      <rect height="12" rx="1" width="12" x="46" y="114" />
-                      <rect height="18" rx="2" width="18" x="66" y="114" />
-                      <rect height="12" rx="1" width="12" x="92" y="114" />
-                      <rect height="16" rx="2" width="16" x="112" y="114" />
-                      <rect height="12" rx="1" width="12" x="136" y="114" />
-                      <rect height="18" rx="2" width="18" x="156" y="114" />
-                      <rect height="12" rx="1" width="12" x="182" y="114" />
-                      <rect height="18" rx="2" width="18" x="202" y="114" />
-                      <rect fill="#ffdcc3" height="24" rx="4" width="72" x="84" y="138" />
-                      <path d="M112 150 L120 144 L128 150 L124 156 L116 156 Z" fill="#904d00" />
-                      <rect height="16" rx="2" width="16" x="88" y="170" />
-                      <rect height="12" rx="1" width="12" x="112" y="170" />
-                      <rect height="18" rx="2" width="18" x="132" y="170" />
-                      <rect height="12" rx="1" width="12" x="158" y="170" />
-                      <rect height="18" rx="2" width="18" x="178" y="170" />
-                      <rect height="16" rx="2" width="16" x="204" y="170" />
-                      <rect height="12" rx="1" width="12" x="88" y="194" />
-                      <rect height="18" rx="2" width="18" x="108" y="194" />
-                      <rect height="12" rx="1" width="12" x="134" y="194" />
-                      <rect height="18" rx="2" width="18" x="154" y="194" />
-                      <rect height="12" rx="1" width="12" x="180" y="194" />
-                      <rect height="20" rx="2" width="20" x="200" y="194" />
-                      <circle cx="120" cy="120" fill="#fe932c" r="5" />
-                    </g>
-                  </svg>
+                {/* High Contrast Scannable QR Code Card */}
+                <div className="relative p-space-md bg-white rounded-xl shadow-inner border border-outline-variant/20 flex items-center justify-center">
+                  <QRCodeSVG
+                    value={fullCheckinQrValue}
+                    size={240}
+                    level="M"
+                    bgColor="#FFFFFF"
+                    fgColor="#00236f"
+                    includeMargin
+                  />
                   <span className="absolute top-2 left-2 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
@@ -389,6 +381,18 @@ export default function UsherPage(): ReactNode {
 
               {/* Operational Action Stack (Ushers) */}
               <div className="flex flex-col gap-space-sm">
+                <button
+                  type="button"
+                  onClick={() => setTagServiceModalOpen(true)}
+                  className="h-12 w-full rounded-lg bg-secondary-container hover:opacity-95 text-on-secondary-container font-label-lg text-label-lg flex items-center justify-between px-space-md shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  <div className="flex items-center gap-space-sm">
+                    <span className="material-symbols-outlined text-[22px]">qr_code_2</span>
+                    <span>Create / Tag Service &amp; Generate New QR</span>
+                  </div>
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                </button>
+
                 <Link
                   href="/usher/live"
                   className="h-12 w-full rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center justify-between px-space-md shadow-sm transition-all active:scale-[0.99] cursor-pointer"
@@ -471,11 +475,31 @@ export default function UsherPage(): ReactNode {
             </div>
 
             <div className="flex flex-col items-center text-center my-auto">
-              <h1 className="font-display-lg text-display-lg text-primary font-bold mt-space-md">
+              {activeService?.serviceTag && (
+                <span className="px-4 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-bold mb-2">
+                  {activeService.serviceTag}
+                </span>
+              )}
+              {activeService?.sermonTopic && (
+                <p className="font-headline-sm text-headline-sm text-secondary font-bold mb-3">
+                  Sermon Topic: “{activeService.sermonTopic}”
+                </p>
+              )}
+              <div className="p-5 bg-white rounded-2xl shadow-lg border border-outline-variant/20 mb-4">
+                <QRCodeSVG
+                  value={fullCheckinQrValue}
+                  size={300}
+                  level="M"
+                  bgColor="#FFFFFF"
+                  fgColor="#00236f"
+                  includeMargin
+                />
+              </div>
+              <h1 className="font-display-lg text-display-lg text-primary font-bold">
                 Scan Camera To Check In
               </h1>
               <p className="font-headline-sm text-headline-sm text-on-surface-variant mt-2 max-w-sm">
-                Hold device toward screen · Door A Welcome Gate
+                Hold device toward screen · {activeService?.usherStation ?? "Door A Welcome Gate"}
               </p>
             </div>
 
@@ -551,6 +575,17 @@ export default function UsherPage(): ReactNode {
             </div>
           </div>
         )}
+
+        <ServiceTagQrModal
+          open={tagServiceModalOpen}
+          onClose={() => setTagServiceModalOpen(false)}
+          onCreated={async () => {
+            setSessionClosed(false);
+            await refetchDashboard();
+            await refetchQr();
+            await refetchAttendance();
+          }}
+        />
       </main>
     </div>
   );

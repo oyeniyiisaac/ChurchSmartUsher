@@ -14,6 +14,8 @@ const USHER_LIVE_QUERY = gql`
     activeService {
       id
       name
+      serviceTag
+      sermonTopic
       usherStation
       status
     }
@@ -48,8 +50,9 @@ const USHER_LIVE_QUERY = gql`
 const MARK_MANUAL_MUTATION = gql`
   mutation MarkManualUsher($serviceId: ID!, $memberId: ID!, $station: String) {
     markManualPresent(serviceId: $serviceId, memberId: $memberId, station: $station) {
-      alreadyMarked
-      record {
+      status
+      message
+      attendance {
         id
         memberName
         memberDepartment
@@ -343,11 +346,16 @@ export default function UsherLiveAttendancePage(): ReactNode {
             <div className="flex items-end justify-between">
               <div className="min-w-0 pr-space-xs">
                 <p className="font-label-sm text-label-sm text-on-surface-variant font-medium">
-                  Usher Terminal 02
+                  {(data?.activeService?.serviceTag as string | undefined) || "Usher Terminal 02"}
                 </p>
                 <h2 className="font-headline-md text-headline-md text-on-surface font-bold truncate">
-                  Sunday First Service
+                  {(data?.activeService?.name as string | undefined) || "Sunday First Service"}
                 </h2>
+                {data?.activeService?.sermonTopic && (
+                  <p className="font-label-sm text-label-sm text-secondary font-semibold truncate mt-0.5">
+                    Sermon: &ldquo;{data.activeService.sermonTopic}&rdquo;
+                  </p>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="font-label-sm text-label-sm text-on-surface-variant font-medium">

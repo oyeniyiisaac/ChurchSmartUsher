@@ -102,11 +102,14 @@ export const assignAffiliationsInputSchema = z.object({
 
 export const createServiceInputSchema = z.object({
   name: z.string().trim().min(2, "Service name must be at least 2 characters."),
+  serviceTag: z.string().trim().max(160).optional().default(""),
+  sermonTopic: z.string().trim().max(240).optional().default(""),
   serviceType: z.enum(["SUNDAY", "MIDWEEK", "SPECIAL"]).default("SUNDAY"),
   serviceDate: z.string().trim().min(8, "Service date is required (YYYY-MM-DD)."),
   startTime: z.string().trim().min(1).default("8:30 AM"),
   location: z.string().trim().min(1).default("RCCG JESUS HOUSE, OGBOMOSHO Auditorium"),
   usherStation: z.string().trim().min(1).default("Door A (Main Entrance)"),
+  openImmediately: z.boolean().optional().default(false),
 });
 
 export const markPresentInputSchema = z.object({

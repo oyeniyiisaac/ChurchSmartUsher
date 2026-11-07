@@ -5,6 +5,7 @@ import type { GraphQLContext } from "@/graphql/context";
 import { resolvers } from "@/graphql/resolvers";
 import { typeDefs } from "@/graphql/schema";
 import { buildCheckinUrl, getTimeSlot, signServiceToken, verifyServiceToken } from "@/services/qr";
+import { buildTaggedServiceName, computeServiceCalendarTag } from "@/services/service-tag";
 import { createServiceInputSchema } from "@/services/validation";
 
 describe("Services & Rotating Service QR Engine (Slice 3)", () => {
@@ -84,6 +85,32 @@ describe("Services & Rotating Service QR Engine (Slice 3)", () => {
       expect(parsed.serviceType).toBe("SUNDAY");
       expect(parsed.location).toBe("RCCG JESUS HOUSE, OGBOMOSHO Auditorium");
       expect(parsed.usherStation).toBe("Door A (Main Entrance)");
+    });
+
+    it("computes Sunday of the month & year tag and tagged service name with sermon topic", () => {
+      expect(computeServiceCalendarTag("2026-11-01", "SUNDAY")).toBe(
+        "First Sunday of November 2026",
+      );
+      expect(computeServiceCalendarTag("2026-11-08", "SUNDAY")).toBe(
+        "Second Sunday of November 2026",
+      );
+      expect(computeServiceCalendarTag("2026-11-15", "SUNDAY")).toBe(
+        "Third Sunday of November 2026",
+      );
+      expect(computeServiceCalendarTag("2026-11-22", "SUNDAY")).toBe(
+        "Fourth Sunday of November 2026",
+      );
+      expect(computeServiceCalendarTag("2026-11-29", "SUNDAY")).toBe(
+        "Fifth Sunday of November 2026",
+      );
+
+      expect(
+        buildTaggedServiceName(
+          "First Sunday of November 2026",
+          "Walking in Covenant Abundance",
+          "",
+        ),
+      ).toBe("First Sunday of November 2026 — Walking in Covenant Abundance");
     });
 
     it("rejects MEMBER role from createService, openService, closeService, and serviceQr", async () => {

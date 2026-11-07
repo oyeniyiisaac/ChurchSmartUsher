@@ -90,6 +90,8 @@ export const typeDefs = `#graphql
   type Service {
     id: ID!
     name: String!
+    serviceTag: String!
+    sermonTopic: String!
     serviceType: ServiceType!
     serviceDate: String!
     startTime: String!
@@ -261,11 +263,14 @@ export const typeDefs = `#graphql
 
   input CreateServiceInput {
     name: String!
+    serviceTag: String
+    sermonTopic: String
     serviceType: ServiceType
     serviceDate: String!
     startTime: String
     location: String
     usherStation: String
+    openImmediately: Boolean
   }
 
   input RegisterGuestInput {

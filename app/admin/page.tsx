@@ -2,7 +2,9 @@
 
 import { gql, useQuery } from "@apollo/client";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { useState, type ReactNode } from "react";
+import { ServiceTagQrModal } from "@/components/ServiceTagQrModal";
 
 const ADMIN_OVERVIEW_QUERY = gql`
   query AdminOverview {
@@ -34,6 +36,8 @@ const ADMIN_OVERVIEW_QUERY = gql`
     activeService {
       id
       name
+      serviceTag
+      sermonTopic
       serviceDate
       startTime
       location
@@ -44,6 +48,18 @@ const ADMIN_OVERVIEW_QUERY = gql`
       avgSundayTurnout
       digitalScanPercent
       visitorRetentionPercent
+    }
+  }
+`;
+
+const SERVICE_QR_ADMIN_QUERY = gql`
+  query ServiceQrAdmin($serviceId: ID!) {
+    serviceQr(serviceId: $serviceId) {
+      serviceId
+      token
+      checkinUrl
+      slot
+      expiresInSeconds
     }
   }
 `;
@@ -77,6 +93,8 @@ interface AdminOverviewData {
   activeService?: {
     id: string;
     name: string;
+    serviceTag?: string;
+    sermonTopic?: string;
     serviceDate: string;
     startTime: string;
     location: string;
@@ -91,14 +109,35 @@ interface AdminOverviewData {
 }
 
 export default function AdminPage(): ReactNode {
-  const { data, error } = useQuery<AdminOverviewData>(ADMIN_OVERVIEW_QUERY, {
+  const {
+    data,
+    error,
+    refetch: refetchAdmin,
+  } = useQuery<AdminOverviewData>(ADMIN_OVERVIEW_QUERY, {
+    fetchPolicy: "network-only",
+  });
+
+  const [serviceTagModalOpen, setServiceTagModalOpen] = useState<boolean>(false);
+  const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
+
+  const activeService = data?.activeService;
+  const { data: qrData, refetch: refetchQr } = useQuery<{
+    serviceQr: {
+      serviceId: string;
+      token: string;
+      checkinUrl: string;
+      slot: number;
+      expiresInSeconds: number;
+    };
+  }>(SERVICE_QR_ADMIN_QUERY, {
+    variables: { serviceId: activeService?.id ?? "" },
+    skip: !activeService?.id,
     fetchPolicy: "network-only",
   });
 
   const adminName = data?.me?.fullName ?? "Parish Administrator";
   const dbMembers = data?.members ?? [];
   const dbDepartments = data?.departments ?? [];
-  const activeService = data?.activeService;
   const reports = data?.attendanceReports;
 
   const totalMembers = dbMembers.length;
@@ -336,10 +375,16 @@ export default function AdminPage(): ReactNode {
                     <span className="w-2 h-2 rounded-full bg-secondary-container animate-pulse" />
                     <span className="font-label-sm text-label-sm font-semibold">
                       {activeService
-                        ? `${activeService.name} · ${activeService.status}`
+                        ? `${activeService.serviceTag || activeService.name} · ${activeService.status}`
                         : "No Active Service Open"}
                     </span>
                   </div>
+                  {activeService?.sermonTopic && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-bold">
+                      <span className="material-symbols-outlined text-[14px]">auto_stories</span>
+                      Topic: {activeService.sermonTopic}
+                    </span>
+                  )}
                 </div>
                 <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-space-xs">
                   <span className="material-symbols-outlined text-[18px] text-outline">
@@ -357,15 +402,16 @@ export default function AdminPage(): ReactNode {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-space-sm">
-                <Link
-                  href="/reports"
-                  className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-surface-container-lowest text-on-surface shadow-sm hover:bg-surface-container-high transition-colors font-label-md text-label-md cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[20px] text-primary">
-                    download
-                  </span>
-                  <span>Export Weekly Summary</span>
-                </Link>
+                {activeService && (
+                  <button
+                    type="button"
+                    onClick={() => setQrModalOpen(true)}
+                    className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-surface-container-lowest text-primary border border-primary/20 shadow-sm hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">qr_code_2</span>
+                    <span>Show Service QR</span>
+                  </button>
+                )}
                 <Link
                   href="/usher"
                   className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-secondary text-on-secondary shadow-sm hover:bg-on-secondary-container transition-colors font-label-md text-label-md"
@@ -373,13 +419,14 @@ export default function AdminPage(): ReactNode {
                   <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                   <span>Open Door Scanner</span>
                 </Link>
-                <Link
-                  href="/services"
+                <button
+                  type="button"
+                  onClick={() => setServiceTagModalOpen(true)}
                   className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-primary text-on-primary shadow-md hover:bg-primary-container transition-colors font-label-md text-label-md cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[20px]">add_circle</span>
-                  <span>+ New Service</span>
-                </Link>
+                  <span>+ Tag Service &amp; QR</span>
+                </button>
               </div>
             </div>
 
@@ -734,6 +781,93 @@ export default function AdminPage(): ReactNode {
           </div>
         </main>
       </div>
+
+      {/* Live QR Code Display Modal on Admin Overview */}
+      {qrModalOpen && activeService && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/60 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="adminQrModalTitle"
+        >
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-6 shadow-ambient border border-outline-variant/20 text-center space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-label-sm font-bold bg-tertiary-container/15 text-tertiary">
+                <span className="w-2 h-2 rounded-full bg-tertiary-container animate-ping" />
+                Live Service QR Code
+              </span>
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(false)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              {activeService.serviceTag && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold">
+                  <span className="material-symbols-outlined text-[13px]">event</span>
+                  {activeService.serviceTag}
+                </span>
+              )}
+              <h3
+                id="adminQrModalTitle"
+                className="font-display text-headline-sm font-bold text-primary"
+              >
+                {activeService.name}
+              </h3>
+              {activeService.sermonTopic && (
+                <p className="text-body-sm font-semibold text-secondary">
+                  Sermon: &ldquo;{activeService.sermonTopic}&rdquo;
+                </p>
+              )}
+            </div>
+
+            <div className="mx-auto w-60 h-60 p-4 rounded-2xl bg-white border-2 border-primary/20 shadow-subtle flex flex-col items-center justify-center">
+              <QRCodeSVG
+                value={
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}${qrData?.serviceQr?.checkinUrl ?? `/checkin/${activeService.id}`}`
+                    : (qrData?.serviceQr?.checkinUrl ?? `/checkin/${activeService.id}`)
+                }
+                size={184}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#1B365D"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Link
+                href="/usher"
+                className="flex-1 py-2.5 rounded-lg bg-secondary-container text-on-secondary-container font-semibold text-body-sm hover:opacity-90 transition-opacity"
+              >
+                Open Projector Kiosk
+              </Link>
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(false)}
+                className="flex-1 py-2.5 rounded-lg bg-primary text-on-primary font-semibold text-body-sm hover:bg-primary-container cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Service Tag & Sermon Topic QR Modal */}
+      <ServiceTagQrModal
+        open={serviceTagModalOpen}
+        onClose={() => setServiceTagModalOpen(false)}
+        onCreated={(created) => {
+          void refetchAdmin();
+          void refetchQr({ serviceId: created.id });
+          setQrModalOpen(true);
+        }}
+      />
     </div>
   );
 }

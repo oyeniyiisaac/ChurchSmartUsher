@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { hasAdminAccess, hasPhotoUploadAccess, hasUsherAccess } from "@/auth/permissions";
+import { QrScannerModal } from "@/components/QrScannerModal";
 
 const DASHBOARD_QUERY = gql`
   query DashboardData {
@@ -25,6 +26,8 @@ const DASHBOARD_QUERY = gql`
     activeService {
       id
       name
+      serviceTag
+      sermonTopic
       serviceType
       serviceDate
       startTime
@@ -70,6 +73,8 @@ interface DashboardQueryData {
   activeService: {
     id: string;
     name: string;
+    serviceTag?: string | null;
+    sermonTopic?: string | null;
     serviceType: string;
     serviceDate: string;
     startTime: string;
@@ -245,9 +250,20 @@ export default function DashboardPage(): ReactNode {
                   </span>
                 </div>
                 <div>
+                  {activeService?.serviceTag && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-bold mb-1.5">
+                      <span className="material-symbols-outlined text-[14px]">calendar_month</span>
+                      <span>{activeService.serviceTag}</span>
+                    </span>
+                  )}
                   <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
                     {activeService?.name ?? "Sunday Worship Service"}
                   </h2>
+                  {activeService?.sermonTopic && (
+                    <p className="font-body-sm text-body-sm text-primary font-semibold mt-0.5">
+                      Sermon Topic: “{activeService.sermonTopic}”
+                    </p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-1 text-on-surface-variant">
                     <span className="material-symbols-outlined text-[18px] text-primary">
                       schedule
@@ -532,44 +548,15 @@ export default function DashboardPage(): ReactNode {
           </div>
         </div>
 
-        {/* Interactive Modal Drawer for Camera Simulation */}
-        {cameraModalOpen && (
-          <div
-            className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-margin"
-            id="cameraModal"
-          >
-            <div className="w-full max-w-sm bg-surface-container-lowest rounded-xl shadow-xl p-space-lg flex flex-col items-center text-center space-y-space-md">
-              <div className="w-16 h-16 rounded-full bg-secondary-fixed/50 flex items-center justify-center text-secondary">
-                <span className="material-symbols-outlined text-[36px]">qr_code_scanner</span>
-              </div>
-              <div>
-                <h4 className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                  Scanning Entrance Code
-                </h4>
-                <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-                  Align the screen with the church usher display kiosk at the sanctuary doors.
-                </p>
-              </div>
-              <div className="w-full aspect-square max-w-[200px] rounded-lg bg-surface-container-highest flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-2 border-2 border-dashed border-secondary/60 rounded-md" />
-                <span className="material-symbols-outlined text-[48px] text-on-surface-variant/40 animate-pulse">
-                  qr_code_2
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant mt-2">
-                  Searching code...
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCameraModalOpen(false)}
-                className="w-full h-11 bg-surface-container text-on-surface rounded-lg font-label-md text-label-md cursor-pointer"
-                id="closeCameraBtn"
-              >
-                Cancel Scan
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Live Camera QR Scanner Modal */}
+        <QrScannerModal
+          open={cameraModalOpen}
+          onClose={() => setCameraModalOpen(false)}
+          fallbackCheckinPath={`/checkin/${activeService?.id ?? "65f000000000000000000100"}?t=preview`}
+          activeServiceName={activeService?.name}
+          activeServiceTag={activeService?.serviceTag ?? undefined}
+          activeSermonTopic={activeService?.sermonTopic ?? undefined}
+        />
       </main>
 
       {/* Stitch Persistent 4-Slot Member Bottom Navigation Bar */}

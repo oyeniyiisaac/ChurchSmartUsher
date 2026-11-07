@@ -86,6 +86,8 @@ sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const serviceSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
+    serviceTag: { type: String, default: "", trim: true },
+    sermonTopic: { type: String, default: "", trim: true },
     serviceType: { type: String, enum: SERVICE_TYPES, default: "SUNDAY", required: true },
     serviceDate: { type: String, required: true, index: true },
     startTime: { type: String, default: "8:30 AM", required: true },

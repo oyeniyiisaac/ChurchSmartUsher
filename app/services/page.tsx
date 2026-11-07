@@ -2,7 +2,9 @@
 
 import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { ServiceTagQrModal } from "@/components/ServiceTagQrModal";
 
 const SERVICES_DESK_QUERY = gql`
   query ServicesDesk {
@@ -15,6 +17,8 @@ const SERVICES_DESK_QUERY = gql`
       id
       name
       serviceType
+      serviceTag
+      sermonTopic
       serviceDate
       startTime
       location
@@ -25,6 +29,8 @@ const SERVICES_DESK_QUERY = gql`
       id
       name
       serviceType
+      serviceTag
+      sermonTopic
       serviceDate
       startTime
       location
@@ -103,8 +109,9 @@ const CLOSE_SERVICE_MUTATION = gql`
 const MARK_MANUAL_MUTATION = gql`
   mutation MarkManualAttendanceDesk($serviceId: ID!, $memberId: ID!, $station: String) {
     markManualPresent(serviceId: $serviceId, memberId: $memberId, station: $station) {
-      alreadyMarked
-      record {
+      status
+      message
+      attendance {
         id
         serviceId
         memberName
@@ -136,6 +143,8 @@ interface ServiceItem {
   id: string;
   name: string;
   serviceType: string;
+  serviceTag?: string;
+  sermonTopic?: string;
   serviceDate: string;
   startTime: string;
   location: string;
@@ -205,7 +214,7 @@ interface StreamItem {
 }
 
 export default function ServicesPage(): ReactNode {
-  const { data } = useQuery<ServicesDeskData>(SERVICES_DESK_QUERY, {
+  const { data, refetch: refetchDesk } = useQuery<ServicesDeskData>(SERVICES_DESK_QUERY, {
     pollInterval: 5000,
     fetchPolicy: "network-only",
   });
@@ -218,7 +227,7 @@ export default function ServicesPage(): ReactNode {
     fetchPolicy: "network-only",
   });
 
-  const { data: qrData } = useQuery<ServiceQrDeskData>(SERVICE_QR_DESK_QUERY, {
+  const { data: qrData, refetch: refetchQr } = useQuery<ServiceQrDeskData>(SERVICE_QR_DESK_QUERY, {
     variables: { serviceId: activeService?.id ?? "" },
     skip: !activeService?.id,
     fetchPolicy: "network-only",
@@ -231,6 +240,7 @@ export default function ServicesPage(): ReactNode {
 
   const [checkinOpen, setCheckinOpen] = useState<boolean>(true);
   const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
+  const [serviceTagModalOpen, setServiceTagModalOpen] = useState<boolean>(false);
   const [guestModalOpen, setGuestModalOpen] = useState<boolean>(false);
   const [qrSeconds, setQrSeconds] = useState<number>(48);
 
@@ -669,22 +679,42 @@ export default function ServicesPage(): ReactNode {
                 </Link>
                 <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                 <span className="text-on-surface font-semibold">
-                  Sunday First Service (17 Nov 2024)
+                  {activeService?.serviceTag
+                    ? `${activeService.serviceTag} (${activeService.serviceDate})`
+                    : activeService?.name || "Sunday Service"}
                 </span>
               </nav>
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="font-display text-headline-md font-bold text-primary tracking-tight">
-                  Sunday First Service — Live Attendance Desk
+                  {activeService?.name || "Sunday First Service"} — Live Attendance Desk
                 </h2>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-label-sm font-semibold bg-secondary-container/70 text-on-secondary-container">
                   <span className="material-symbols-outlined text-[14px]">schedule</span>
-                  Sunday, 17 Nov 2024 · 08:00 AM WAT
+                  {activeService
+                    ? `${activeService.serviceDate} · ${activeService.startTime} WAT`
+                    : "Sunday · 08:00 AM WAT"}
                 </span>
+                {activeService?.sermonTopic && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-label-sm font-bold bg-primary-fixed text-on-primary-fixed">
+                    <span className="material-symbols-outlined text-[14px]">auto_stories</span>
+                    Topic: {activeService.sermonTopic}
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Right: Service Controls & Projector Actions */}
             <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Tag Service & Generate New QR */}
+              <button
+                type="button"
+                onClick={() => setServiceTagModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-secondary-container text-on-secondary-container font-semibold text-body-sm shadow-subtle hover:opacity-90 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">sell</span>
+                <span>Tag Service &amp; New QR</span>
+              </button>
+
               {/* Toggle Open/Closed Status */}
               <button
                 type="button"
@@ -1404,24 +1434,43 @@ export default function ServicesPage(): ReactNode {
               </button>
             </div>
 
-            <div>
+            <div className="space-y-1">
+              {activeService?.serviceTag && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold">
+                  <span className="material-symbols-outlined text-[13px]">event</span>
+                  {activeService.serviceTag}
+                </span>
+              )}
               <h3
                 id="qrModalTitle"
                 className="font-display text-headline-sm font-bold text-primary"
               >
-                Sunday First Service Check-In
+                {activeService?.name || "Sunday Service Check-In"}
               </h3>
+              {activeService?.sermonTopic && (
+                <p className="text-body-sm font-semibold text-secondary">
+                  Sermon: &ldquo;{activeService.sermonTopic}&rdquo;
+                </p>
+              )}
               <p className="text-body-sm text-on-surface-variant mt-0.5">
                 Scan with your phone camera to confirm attendance
               </p>
             </div>
 
-            {/* Simulated High-Contrast QR Box */}
-            <div className="mx-auto w-56 h-56 p-4 rounded-2xl bg-white border-2 border-primary/20 shadow-subtle flex flex-col items-center justify-center relative">
-              <span className="material-symbols-outlined text-[168px] text-primary leading-none">
-                qr_code_2
-              </span>
-              <span className="text-[10px] font-mono text-on-surface-variant mt-1">
+            {/* Real Scannable High-Contrast QR Box */}
+            <div className="mx-auto w-60 h-60 p-4 rounded-2xl bg-white border-2 border-primary/20 shadow-subtle flex flex-col items-center justify-center relative">
+              <QRCodeSVG
+                value={
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}${checkinHref}`
+                    : checkinHref
+                }
+                size={184}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#1B365D"
+              />
+              <span className="text-[10px] font-mono text-on-surface-variant mt-2 truncate max-w-full">
                 {checkinHref}
               </span>
             </div>
@@ -1432,16 +1481,26 @@ export default function ServicesPage(): ReactNode {
             </div>
 
             <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setQrModalOpen(false);
+                  setServiceTagModalOpen(true);
+                }}
+                className="flex-1 py-2.5 rounded-lg bg-secondary-container text-on-secondary-container font-semibold text-body-sm hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                Tag New Service QR
+              </button>
               <Link
                 href={checkinHref}
-                className="flex-1 py-2.5 rounded-lg bg-secondary-container text-on-secondary-container font-semibold text-body-sm hover:opacity-90 transition-opacity"
+                className="flex-1 py-2.5 rounded-lg bg-surface-container-high text-on-surface font-semibold text-body-sm hover:bg-surface-container transition-colors"
               >
-                Open Member Scan View
+                Open Scan View
               </Link>
               <button
                 type="button"
                 onClick={() => setQrModalOpen(false)}
-                className="flex-1 py-2.5 rounded-lg bg-primary text-on-primary font-semibold text-body-sm hover:bg-primary-container cursor-pointer"
+                className="py-2.5 px-4 rounded-lg bg-primary text-on-primary font-semibold text-body-sm hover:bg-primary-container cursor-pointer"
               >
                 Done
               </button>
@@ -1449,6 +1508,21 @@ export default function ServicesPage(): ReactNode {
           </div>
         </div>
       )}
+
+      {/* Service Tag & Sermon Topic QR Generator Modal */}
+      <ServiceTagQrModal
+        open={serviceTagModalOpen}
+        onClose={() => setServiceTagModalOpen(false)}
+        onCreated={(created) => {
+          void refetchDesk();
+          void refetchQr({ serviceId: created.id });
+          setCheckinOpen(true);
+          setQrModalOpen(true);
+          showToast(
+            `Generated new QR for ${created.serviceTag}${created.sermonTopic ? ` — "${created.sermonTopic}"` : ""}`,
+          );
+        }}
+      />
 
       {/* Interactive Modal 2: Quick Register First-Time Guest */}
       {guestModalOpen && (
