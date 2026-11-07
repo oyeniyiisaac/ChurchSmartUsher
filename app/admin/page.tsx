@@ -38,8 +38,6 @@ const ADMIN_OVERVIEW_QUERY = gql`
       startTime
       location
       status
-      totalPresent
-      capacity
     }
     attendanceReports {
       totalRecordedQ4
@@ -83,8 +81,6 @@ interface AdminOverviewData {
     startTime: string;
     location: string;
     status: string;
-    totalPresent: number;
-    capacity: number;
   } | null;
   attendanceReports?: {
     totalRecordedQ4: number;
@@ -106,8 +102,8 @@ export default function AdminPage(): ReactNode {
   const reports = data?.attendanceReports;
 
   const totalMembers = dbMembers.length;
-  const lastServiceAttendance = activeService?.totalPresent ?? 0;
-  const capacity = activeService?.capacity ?? 360;
+  const lastServiceAttendance = reports?.avgSundayTurnout ?? 0;
+  const capacity = 360;
   const capacityPct =
     capacity > 0 ? Math.min(100, Math.round((lastServiceAttendance / capacity) * 100)) : 0;
   const avgAttendance = reports?.avgSundayTurnout ?? 0;

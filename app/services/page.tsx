@@ -20,9 +20,6 @@ const SERVICES_DESK_QUERY = gql`
       location
       usherStation
       status
-      totalPresent
-      membersPresent
-      guestsPresent
     }
     services {
       id
@@ -48,20 +45,25 @@ const SERVICES_DESK_QUERY = gql`
 const SERVICE_ATTENDANCE_QUERY = gql`
   query ServiceAttendanceDesk($serviceId: ID!) {
     serviceAttendance(serviceId: $serviceId) {
-      id
       serviceId
-      memberId
-      memberName
-      memberPhone
-      memberCode
-      department
-      method
-      status
-      isGuest
-      guestName
-      guestPhone
-      notes
-      markedAt
+      totalCount
+      memberCount
+      guestCount
+      qrCount
+      manualCount
+      records {
+        id
+        serviceId
+        memberId
+        memberName
+        memberPhone
+        memberCode
+        memberDepartment
+        method
+        isGuest
+        invitedBy
+        checkedInAt
+      }
     }
   }
 `;
@@ -99,29 +101,33 @@ const CLOSE_SERVICE_MUTATION = gql`
 `;
 
 const MARK_MANUAL_MUTATION = gql`
-  mutation MarkManualAttendanceDesk($input: ManualAttendanceInput!) {
-    markManualAttendance(input: $input) {
-      id
-      serviceId
-      memberName
-      memberPhone
-      memberCode
-      department
-      method
-      markedAt
+  mutation MarkManualAttendanceDesk($serviceId: ID!, $memberId: ID!, $station: String) {
+    markManualPresent(serviceId: $serviceId, memberId: $memberId, station: $station) {
+      alreadyMarked
+      record {
+        id
+        serviceId
+        memberName
+        memberPhone
+        memberCode
+        memberDepartment
+        method
+        checkedInAt
+      }
     }
   }
 `;
 
 const REGISTER_GUEST_MUTATION = gql`
-  mutation RegisterGuestAttendanceDesk($input: GuestAttendanceInput!) {
+  mutation RegisterGuestAttendanceDesk($input: RegisterGuestInput!) {
     registerGuestAttendance(input: $input) {
       id
       serviceId
-      guestName
-      guestPhone
-      notes
-      markedAt
+      memberName
+      memberPhone
+      isGuest
+      invitedBy
+      checkedInAt
     }
   }
 `;
@@ -258,24 +264,20 @@ export default function ServicesPage(): ReactNode {
   }, [activeService]);
 
   useEffect(() => {
-    const rawRows = (attendanceData?.serviceAttendance ?? []) as Array<{
+    const rawRows = (attendanceData?.serviceAttendance?.records ?? []) as Array<{
       id: string;
-      memberName?: string | null;
-      memberPhone?: string | null;
-      memberCode?: string | null;
-      department?: string | null;
+      memberName: string;
+      memberPhone: string;
+      memberCode: string;
+      memberDepartment: string;
       method: string;
       isGuest: boolean;
-      guestName?: string | null;
-      guestPhone?: string | null;
-      notes?: string | null;
-      markedAt: string;
+      invitedBy: string;
+      checkedInAt: string;
     }>;
 
     const mappedRoster: RosterRow[] = rawRows.map((rec) => {
-      const displayName = rec.isGuest
-        ? (rec.guestName ?? "First-time Guest")
-        : (rec.memberName ?? "Registered Member");
+      const displayName = rec.memberName || "Registered Member";
       const initials = displayName
         .split(" ")
         .filter(Boolean)
@@ -290,16 +292,16 @@ export default function ServicesPage(): ReactNode {
           ? "bg-secondary-container text-on-secondary-container"
           : "bg-primary text-on-primary",
         name: displayName,
-        codeBadge: rec.isGuest ? "First-time Guest" : `#${rec.memberCode ?? "MEMBER"}`,
+        codeBadge: rec.isGuest ? "First-time Guest" : `#${rec.memberCode || "MEMBER"}`,
         isGuest: rec.isGuest,
-        phone: rec.isGuest ? (rec.guestPhone ?? "N/A") : (rec.memberPhone ?? "N/A"),
+        phone: rec.memberPhone || "N/A",
         department: rec.isGuest
-          ? (rec.notes ?? "Assigned: Hospitality Team")
-          : (rec.department ?? "General Congregation"),
+          ? rec.invitedBy || "Assigned: Hospitality Team"
+          : rec.memberDepartment || "General Congregation",
         departmentFilterKey: rec.isGuest
           ? "First-time Guests"
-          : (rec.department ?? "General Congregation"),
-        time: new Date(rec.markedAt).toLocaleTimeString([], {
+          : rec.memberDepartment || "General Congregation",
+        time: new Date(rec.checkedInAt).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
@@ -395,11 +397,9 @@ export default function ServicesPage(): ReactNode {
       try {
         await markManualMutation({
           variables: {
-            input: {
-              serviceId: activeServiceId,
-              memberId: matched.id,
-              status: "PRESENT",
-            },
+            serviceId: activeServiceId,
+            memberId: matched.id,
+            station: "Main Foyer Desk",
           },
         });
         await refetchAttendance();
@@ -445,9 +445,10 @@ export default function ServicesPage(): ReactNode {
         variables: {
           input: {
             serviceId: activeServiceId,
-            guestName: guestName.trim(),
-            guestPhone: guestPhone.trim() || "08000000000",
-            notes: guestInvitedBy.trim() || "Assigned: Hospitality Team",
+            fullName: guestName.trim(),
+            phone: guestPhone.trim() || "08000000000",
+            invitedBy: guestInvitedBy.trim() || "Assigned: Hospitality Team",
+            station: "Main Foyer Desk",
           },
         },
       });
