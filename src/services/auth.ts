@@ -2,6 +2,18 @@ import { GraphQLError } from "graphql";
 
 import { hashPassword, verifyPassword } from "@/auth/password";
 import {
+  canMemberAccessPath,
+  getMemberLandingPath,
+  getRoleLandingPath,
+  hasAdminAccess,
+  hasPhotoUploadAccess,
+  hasUsherAccess,
+  isMediaUnitMember,
+  isMediaUnitName,
+  isUsherUnitMember,
+  isUsherUnitName,
+} from "@/auth/permissions";
+import {
   type AuthenticatedMember,
   createSession,
   revokeCurrentSession,
@@ -19,29 +31,38 @@ import {
   registerInputSchema,
 } from "./validation";
 
+export {
+  canMemberAccessPath,
+  getMemberLandingPath,
+  getRoleLandingPath,
+  hasAdminAccess,
+  hasPhotoUploadAccess,
+  hasUsherAccess,
+  isMediaUnitMember,
+  isMediaUnitName,
+  isUsherUnitMember,
+  isUsherUnitName,
+};
+
 export type AuthPayload = {
   member: AuthenticatedMember;
   redirectTo: string;
 };
 
-export function getRoleLandingPath(role: UserRole): string {
-  switch (role) {
-    case "ADMIN":
-      return "/admin";
-    case "USHER":
-      return "/usher";
-    case "MEMBER":
-    default:
-      return "/dashboard";
-  }
-}
+export function resolvePostAuthRedirect(
+  roleOrMember: UserRole | Pick<AuthenticatedMember, "role" | "department" | "activities">,
+  returnTo?: string | null,
+): string {
+  const memberObj: Pick<AuthenticatedMember, "role" | "department" | "activities"> =
+    typeof roleOrMember === "string"
+      ? { role: roleOrMember, department: "", activities: [] }
+      : roleOrMember;
 
-export function resolvePostAuthRedirect(role: UserRole, returnTo?: string | null): string {
   const safeReturnTo = getSafeReturnTo(returnTo);
-  if (safeReturnTo) {
+  if (safeReturnTo && canMemberAccessPath(memberObj, safeReturnTo)) {
     return safeReturnTo;
   }
-  return getRoleLandingPath(role);
+  return getMemberLandingPath(memberObj);
 }
 
 export function requireRole(
@@ -63,6 +84,57 @@ export function requireRole(
   return member;
 }
 
+export function requireAdminAccess(member: AuthenticatedMember | null): AuthenticatedMember {
+  if (!member) {
+    throw new GraphQLError("Authentication required. Please log in to continue.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+
+  if (!hasAdminAccess(member)) {
+    throw new GraphQLError("Forbidden: Administrator access is required for this action.", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+
+  return member;
+}
+
+export function requireUsherOrAdminAccess(member: AuthenticatedMember | null): AuthenticatedMember {
+  if (!member) {
+    throw new GraphQLError("Authentication required. Please log in to continue.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+
+  if (!hasUsherAccess(member)) {
+    throw new GraphQLError("Forbidden: Only Ushering Unit or Admin can access this resource.", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+
+  return member;
+}
+
+export function requirePhotoUploadAccess(member: AuthenticatedMember | null): AuthenticatedMember {
+  if (!member) {
+    throw new GraphQLError("Authentication required. Please log in to continue.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+
+  if (!hasPhotoUploadAccess(member)) {
+    throw new GraphQLError(
+      "Forbidden: Only the Media Unit or Admin is authorized to upload and manage service photos.",
+      {
+        extensions: { code: "FORBIDDEN" },
+      },
+    );
+  }
+
+  return member;
+}
+
 export async function registerMember(rawInput: RegisterInput): Promise<AuthPayload> {
   const parsed = registerInputSchema.parse(rawInput);
   await connectToDatabase();
@@ -75,10 +147,31 @@ export async function registerMember(rawInput: RegisterInput): Promise<AuthPaylo
   }
 
   const departmentName = parsed.department || "Unassigned";
-  const matchedDept = await Department.findOne({ name: departmentName });
+  let matchedDept = await Department.findOne({ name: departmentName });
+  if (
+    !matchedDept &&
+    departmentName !== "Unassigned" &&
+    departmentName !== "General Member" &&
+    departmentName !== "General Congregation"
+  ) {
+    matchedDept = await Department.create({
+      name: departmentName,
+      description: `${departmentName} — RCCG JESUS HOUSE, OGBOMOSHO`,
+      icon: isMediaUnitName(departmentName)
+        ? "photo_camera"
+        : isUsherUnitName(departmentName)
+          ? "badge"
+          : "groups",
+      leadName: "",
+      active: true,
+    });
+  }
   const memberCode = await generateNextMemberCode();
   const passwordHash = await hashPassword(parsed.password);
   const totalMembersCount = await Member.countDocuments();
+
+  const assignedRole: UserRole =
+    totalMembersCount === 0 ? "ADMIN" : isUsherUnitName(departmentName) ? "USHER" : "MEMBER";
 
   const created = await Member.create({
     fullName: parsed.fullName,
@@ -86,7 +179,7 @@ export async function registerMember(rawInput: RegisterInput): Promise<AuthPaylo
     email: parsed.email,
     gender: parsed.gender ?? "Male",
     passwordHash,
-    role: totalMembersCount === 0 ? "ADMIN" : "MEMBER",
+    role: assignedRole,
     status: "ACTIVE",
     department: departmentName,
     activities: [],
@@ -104,7 +197,7 @@ export async function registerMember(rawInput: RegisterInput): Promise<AuthPaylo
   const member = toAuthenticatedMember(created);
   return {
     member,
-    redirectTo: resolvePostAuthRedirect(member.role, parsed.returnTo),
+    redirectTo: resolvePostAuthRedirect(member, parsed.returnTo),
   };
 }
 
@@ -125,7 +218,7 @@ export async function loginMember(rawInput: LoginInput): Promise<AuthPayload> {
   const member = toAuthenticatedMember(found);
   return {
     member,
-    redirectTo: resolvePostAuthRedirect(member.role, parsed.returnTo),
+    redirectTo: resolvePostAuthRedirect(member, parsed.returnTo),
   };
 }
 

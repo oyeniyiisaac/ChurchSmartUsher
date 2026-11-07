@@ -11,6 +11,7 @@ import {
   type UserRole,
 } from "@/db/models";
 import { connectToDatabase } from "@/db/mongoose";
+import { isUsherUnitName } from "./auth";
 import { deleteImageFromCloudinary, uploadImageToCloudinary } from "./cloudinary";
 import {
   type ActivityInput,
@@ -314,6 +315,12 @@ export async function assignMemberAffiliations(
     member.department = depts[0].name;
   }
   member.activities = acts.map((a) => a.name);
+
+  if (member.role !== "ADMIN") {
+    const inUsherUnit =
+      isUsherUnitName(member.department) || member.activities.some((a) => isUsherUnitName(a));
+    member.role = inUsherUnit ? "USHER" : "MEMBER";
+  }
 
   await member.save();
   return toAuthenticatedMember(member);

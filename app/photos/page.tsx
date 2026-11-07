@@ -4,11 +4,16 @@ import { gql, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { type ReactElement, useState } from "react";
 
+import { hasPhotoUploadAccess } from "@/auth/permissions";
+
 const SERVICE_PHOTOS_QUERY = gql`
   query GetServicePhotos($albumKey: String) {
     me {
       id
       fullName
+      role
+      department
+      activities
       avatarUrl
     }
     servicePhotos(albumKey: "all") {
@@ -143,6 +148,15 @@ export default function PhotosGalleryPage(): ReactElement {
             </div>
           </div>
           <div className="flex items-center gap-space-sm">
+            {hasPhotoUploadAccess(data?.me) && (
+              <Link
+                href="/admin/photos"
+                className="h-9 px-3 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm flex items-center gap-1.5 shadow-sm hover:bg-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">add_a_photo</span>
+                <span>Upload Service Photos</span>
+              </Link>
+            )}
             <button
               aria-label="Notifications"
               className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"

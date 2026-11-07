@@ -15,7 +15,10 @@ import {
   loginMember,
   logoutMember,
   registerMember,
+  requireAdminAccess,
+  requirePhotoUploadAccess,
   requireRole,
+  requireUsherOrAdminAccess,
 } from "@/services/auth";
 import {
   type ActivityInfo,
@@ -158,7 +161,7 @@ export const resolvers = {
       args: { filter?: MembersFilterInput },
       context: GraphQLContext,
     ): Promise<AuthenticatedMember[]> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return listMembers(args.filter);
     },
 
@@ -175,7 +178,7 @@ export const resolvers = {
       args: { serviceId: string },
       context: GraphQLContext,
     ): Promise<ServiceQrPayload> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return getServiceQr(args.serviceId);
     },
 
@@ -192,7 +195,7 @@ export const resolvers = {
       args: { serviceId: string },
       context: GraphQLContext,
     ): Promise<ServiceAttendanceSummary> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return getServiceAttendance(args.serviceId);
     },
 
@@ -201,7 +204,7 @@ export const resolvers = {
       _args: unknown,
       context: GraphQLContext,
     ): Promise<AttendanceReportsSummary> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireAdminAccess(context.member ?? null);
       return getAttendanceReports();
     },
 
@@ -210,7 +213,7 @@ export const resolvers = {
       args: { serviceId?: string },
       context: GraphQLContext,
     ): Promise<string> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireAdminAccess(context.member ?? null);
       return exportServiceAttendanceCsv(args.serviceId);
     },
 
@@ -235,7 +238,7 @@ export const resolvers = {
       args: { statusFilter?: string; tagFilter?: string },
       context: GraphQLContext,
     ): Promise<AdminPhotoHubOverview> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requirePhotoUploadAccess(context.member ?? null);
       return listAdminPhotos({
         statusFilter: args.statusFilter,
         tagFilter: args.tagFilter,
@@ -247,7 +250,7 @@ export const resolvers = {
       _args: unknown,
       context: GraphQLContext,
     ): Promise<ParishSettingsRecord> => {
-      requireRole(context.member ?? null, ["ADMIN"]);
+      requireAdminAccess(context.member ?? null);
       return getParishSettings();
     },
 
@@ -261,7 +264,7 @@ export const resolvers = {
     },
 
     adminOnlyCheck: (_parent: unknown, _args: unknown, context: GraphQLContext): string => {
-      const admin = requireRole(context.member ?? null, ["ADMIN"]);
+      const admin = requireAdminAccess(context.member ?? null);
       return `Authorized admin access confirmed for ${admin.fullName}`;
     },
   },
@@ -350,7 +353,7 @@ export const resolvers = {
       args: { serviceId: string },
       context: GraphQLContext,
     ): Promise<ServiceInfo> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return openService(args.serviceId);
     },
 
@@ -359,7 +362,7 @@ export const resolvers = {
       args: { serviceId: string },
       context: GraphQLContext,
     ): Promise<ServiceInfo> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return closeService(args.serviceId);
     },
 
@@ -377,7 +380,7 @@ export const resolvers = {
       args: { serviceId: string; memberId: string; station?: string },
       context: GraphQLContext,
     ): Promise<MarkPresentResult> => {
-      const usher = requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      const usher = requireUsherOrAdminAccess(context.member ?? null);
       return markManualPresent(usher, args);
     },
 
@@ -386,7 +389,7 @@ export const resolvers = {
       args: { input: RegisterGuestInput },
       context: GraphQLContext,
     ): Promise<AttendanceRecordInfo> => {
-      const usher = requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      const usher = requireUsherOrAdminAccess(context.member ?? null);
       return registerGuestAttendance(usher, args.input);
     },
 
@@ -395,7 +398,7 @@ export const resolvers = {
       args: { attendanceId: string },
       context: GraphQLContext,
     ): Promise<boolean> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requireUsherOrAdminAccess(context.member ?? null);
       return undoAttendance(args.attendanceId);
     },
 
@@ -404,7 +407,7 @@ export const resolvers = {
       args: { input: UploadServicePhotoInput },
       context: GraphQLContext,
     ): Promise<ServicePhotoRecord> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requirePhotoUploadAccess(context.member ?? null);
       return uploadServicePhoto(args.input);
     },
 
@@ -416,7 +419,7 @@ export const resolvers = {
       },
       context: GraphQLContext,
     ): Promise<ServicePhotoRecord> => {
-      requireRole(context.member ?? null, ["USHER", "ADMIN"]);
+      requirePhotoUploadAccess(context.member ?? null);
       return moderateServicePhoto(args);
     },
 

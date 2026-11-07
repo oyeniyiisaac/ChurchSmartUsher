@@ -101,13 +101,27 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
   const isLoading = loginLoading || registerLoading;
 
-  const departmentChoices =
-    deptData?.departments && deptData.departments.length > 0
-      ? [
-          ...deptData.departments.map((d) => ({ label: d.name, icon: d.icon || "groups" })),
-          { label: "General Member", icon: "favorite" },
-        ]
-      : [{ label: "General Member", icon: "favorite" }];
+  const baseDepartmentChoices = [
+    { label: "General Member", icon: "favorite" },
+    { label: "Media Unit", icon: "photo_camera" },
+    { label: "Ushering Unit", icon: "badge" },
+    { label: "Sanctuary Choir", icon: "music_note" },
+    { label: "Prayer Band", icon: "volunteer_activism" },
+    { label: "Sanctuary Keepers", icon: "cleaning_services" },
+  ];
+
+  const dbDeptChoices = (deptData?.departments ?? []).map((d) => ({
+    label: d.name,
+    icon: d.icon || "groups",
+  }));
+
+  const seenLabels = new Set<string>();
+  const departmentChoices = [...dbDeptChoices, ...baseDepartmentChoices].filter((item) => {
+    const key = item.label.trim().toLowerCase();
+    if (seenLabels.has(key)) return false;
+    seenLabels.add(key);
+    return true;
+  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

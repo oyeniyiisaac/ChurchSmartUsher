@@ -5,7 +5,15 @@ import { hashPassword, hashSessionToken, verifyPassword } from "@/auth/password"
 import type { GraphQLContext } from "@/graphql/context";
 import { resolvers } from "@/graphql/resolvers";
 import { typeDefs } from "@/graphql/schema";
-import { getRoleLandingPath, requireRole } from "@/services/auth";
+import {
+  canMemberAccessPath,
+  getRoleLandingPath,
+  requireAdminAccess,
+  requirePhotoUploadAccess,
+  requireRole,
+  requireUsherOrAdminAccess,
+  resolvePostAuthRedirect,
+} from "@/services/auth";
 import { getSafeReturnTo, normalizePhoneNumber } from "@/services/validation";
 
 describe("Authentication, Validation & Role Guards (Slice 1)", () => {
@@ -114,6 +122,64 @@ describe("Authentication, Validation & Role Guards (Slice 1)", () => {
           "Authorized admin access confirmed",
         );
       }
+    });
+
+    it("restricts normal members and other units from Usher and Admin pages while allowing Media Unit to access /admin/photos", () => {
+      const choirMember = {
+        ...sampleMember,
+        role: "MEMBER" as const,
+        department: "Sanctuary Choir",
+      };
+      const mediaMember = { ...sampleMember, role: "MEMBER" as const, department: "Media Unit" };
+      const usherMember = { ...sampleMember, role: "USHER" as const, department: "Ushering Unit" };
+      const adminMember = { ...sampleMember, role: "ADMIN" as const, department: "Administration" };
+
+      // 1. Normal Member / Choir Unit: Member pages only
+      expect(canMemberAccessPath(choirMember, "/dashboard")).toBe(true);
+      expect(canMemberAccessPath(choirMember, "/photos")).toBe(true);
+      expect(canMemberAccessPath(choirMember, "/usher")).toBe(false);
+      expect(canMemberAccessPath(choirMember, "/usher/live")).toBe(false);
+      expect(canMemberAccessPath(choirMember, "/admin")).toBe(false);
+      expect(canMemberAccessPath(choirMember, "/admin/photos")).toBe(false);
+      expect(canMemberAccessPath(choirMember, "/services")).toBe(false);
+      expect(() => requireUsherOrAdminAccess(choirMember)).toThrow(/Forbidden/);
+      expect(() => requirePhotoUploadAccess(choirMember)).toThrow(/Forbidden/);
+      expect(() => requireAdminAccess(choirMember)).toThrow(/Forbidden/);
+
+      // 2. Media Unit Member: Member pages + /admin/photos ONLY (no Usher or other Admin pages)
+      expect(canMemberAccessPath(mediaMember, "/dashboard")).toBe(true);
+      expect(canMemberAccessPath(mediaMember, "/admin/photos")).toBe(true);
+      expect(canMemberAccessPath(mediaMember, "/usher")).toBe(false);
+      expect(canMemberAccessPath(mediaMember, "/admin")).toBe(false);
+      expect(canMemberAccessPath(mediaMember, "/members")).toBe(false);
+      expect(canMemberAccessPath(mediaMember, "/settings")).toBe(false);
+      expect(requirePhotoUploadAccess(mediaMember)).toEqual(mediaMember);
+      expect(() => requireUsherOrAdminAccess(mediaMember)).toThrow(/Forbidden/);
+      expect(() => requireAdminAccess(mediaMember)).toThrow(/Forbidden/);
+
+      // 3. Usher: Member pages + Usher pages (/usher, /usher/live) ONLY (no Admin or Media Photo Hub)
+      expect(canMemberAccessPath(usherMember, "/usher")).toBe(true);
+      expect(canMemberAccessPath(usherMember, "/usher/live")).toBe(true);
+      expect(canMemberAccessPath(usherMember, "/admin")).toBe(false);
+      expect(canMemberAccessPath(usherMember, "/admin/photos")).toBe(false);
+      expect(canMemberAccessPath(usherMember, "/reports")).toBe(false);
+      expect(requireUsherOrAdminAccess(usherMember)).toEqual(usherMember);
+      expect(() => requirePhotoUploadAccess(usherMember)).toThrow(/Forbidden/);
+      expect(() => requireAdminAccess(usherMember)).toThrow(/Forbidden/);
+
+      // 4. Admin: Full access across all sections
+      expect(canMemberAccessPath(adminMember, "/admin")).toBe(true);
+      expect(canMemberAccessPath(adminMember, "/admin/photos")).toBe(true);
+      expect(canMemberAccessPath(adminMember, "/usher")).toBe(true);
+      expect(requireAdminAccess(adminMember)).toEqual(adminMember);
+      expect(requirePhotoUploadAccess(adminMember)).toEqual(adminMember);
+      expect(requireUsherOrAdminAccess(adminMember)).toEqual(adminMember);
+
+      // 5. Post-auth redirect prevents unauthorized returnTo escalation
+      expect(resolvePostAuthRedirect(choirMember, "/admin")).toBe("/dashboard");
+      expect(resolvePostAuthRedirect(mediaMember, "/admin/photos")).toBe("/admin/photos");
+      expect(resolvePostAuthRedirect(mediaMember, "/admin")).toBe("/dashboard");
+      expect(resolvePostAuthRedirect(usherMember, "/admin")).toBe("/usher");
     });
   });
 });

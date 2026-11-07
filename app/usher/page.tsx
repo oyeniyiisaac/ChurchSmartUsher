@@ -4,6 +4,8 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { hasUsherAccess } from "@/auth/permissions";
+
 const USHER_DASHBOARD_QUERY = gql`
   query UsherDashboard {
     me {
@@ -11,6 +13,8 @@ const USHER_DASHBOARD_QUERY = gql`
       fullName
       phone
       role
+      department
+      activities
       avatarUrl
     }
     activeService {
@@ -65,6 +69,8 @@ interface UsherDashboardData {
     fullName: string;
     phone: string;
     role: "MEMBER" | "USHER" | "ADMIN";
+    department?: string | null;
+    activities?: string[] | null;
     avatarUrl?: string;
   } | null;
   activeService: {
@@ -108,7 +114,7 @@ export default function UsherPage(): ReactNode {
 
   const { data: qrData, refetch: refetchQr } = useQuery<ServiceQrData>(SERVICE_QR_QUERY, {
     variables: { serviceId: activeService?.id ?? "" },
-    skip: !activeService?.id || (member?.role !== "USHER" && member?.role !== "ADMIN"),
+    skip: !activeService?.id || !hasUsherAccess(member),
     fetchPolicy: "network-only",
   });
 

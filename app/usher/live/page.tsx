@@ -17,7 +17,7 @@ const USHER_LIVE_QUERY = gql`
       usherStation
       status
     }
-    members(search: $search) {
+    members(filter: { search: $search }) {
       id
       fullName
       phone
@@ -48,9 +48,8 @@ const USHER_LIVE_QUERY = gql`
 const MARK_MANUAL_MUTATION = gql`
   mutation MarkManualUsher($serviceId: ID!, $memberId: ID!, $station: String) {
     markManualPresent(serviceId: $serviceId, memberId: $memberId, station: $station) {
-      status
-      message
-      attendance {
+      alreadyMarked
+      record {
         id
         memberName
         memberDepartment

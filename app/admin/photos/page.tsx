@@ -4,12 +4,26 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { type ChangeEvent, type ReactElement, useEffect, useRef, useState } from "react";
 
+import { hasAdminAccess } from "@/auth/permissions";
+
 const ADMIN_PHOTO_HUB_QUERY = gql`
   query GetAdminPhotoHub($statusFilter: String, $tagFilter: String) {
     me {
       id
       fullName
       role
+      department
+      activities
+    }
+    activeService {
+      id
+      name
+      serviceDate
+    }
+    services {
+      id
+      name
+      serviceDate
     }
     adminPhotoHub(statusFilter: $statusFilter, tagFilter: $tagFilter) {
       totalCount
@@ -39,7 +53,7 @@ const ADMIN_PHOTO_HUB_QUERY = gql`
 `;
 
 const UPLOAD_PHOTO_MUTATION = gql`
-  mutation UploadServicePhoto($input: UploadPhotoInput!) {
+  mutation UploadServicePhoto($input: UploadServicePhotoInput!) {
     uploadServicePhoto(input: $input) {
       id
       title
@@ -103,6 +117,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<boolean>(false);
+  const [selectedServiceName, setSelectedServiceName] = useState<string>("Sunday Worship Service");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data, refetch } = useQuery(ADMIN_PHOTO_HUB_QUERY, {
@@ -112,6 +127,28 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
   const [uploadPhotoMutation] = useMutation(UPLOAD_PHOTO_MUTATION);
   const [moderateMutation] = useMutation(MODERATE_PHOTO_MUTATION);
   const [purgeMutation] = useMutation(PURGE_EXPIRED_PHOTOS_MUTATION);
+
+  const isAdmin = hasAdminAccess(data?.me);
+  const serviceOptions: Array<{ id: string; name: string; serviceDate: string }> =
+    data?.services && data.services.length > 0
+      ? (data.services as Array<{ id: string; name: string; serviceDate: string }>)
+      : [
+          {
+            id: "active-sunday",
+            name: (data?.activeService?.name as string | undefined) || "Sunday Worship Service",
+            serviceDate: (data?.activeService?.serviceDate as string | undefined) || "Sunday",
+          },
+          {
+            id: "midweek-study",
+            name: "Midweek Digging Deep / Faith Clinic",
+            serviceDate: "Midweek",
+          },
+          {
+            id: "thanksgiving-service",
+            name: "Monthly Thanksgiving Service",
+            serviceDate: "First Sunday",
+          },
+        ];
 
   useEffect(() => {
     const rawPhotos = (data?.adminPhotoHub?.photos ?? []) as Array<{
@@ -156,17 +193,24 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
         reader.readAsDataURL(file);
       });
 
+      const matchedService = serviceOptions.find((s) => s.name === selectedServiceName);
+      const isThanksgiving = selectedServiceName.toLowerCase().includes("thanksgiving");
+      const albumKey = isThanksgiving ? "thanksgiving" : "today";
+      const sizeMb = Math.max(0.1, file.size / (1024 * 1024)).toFixed(1);
+
       try {
         await uploadPhotoMutation({
           variables: {
             input: {
               title: file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " "),
               fileName: file.name,
-              albumKey: "sunday-service",
-              albumTitle: "RCCG JESUS HOUSE, OGBOMOSHO Service Roll",
-              photographer: data?.me?.fullName ?? "Media Team",
-              fileSizeBytes: file.size,
+              albumKey,
+              albumTitle: `${selectedServiceName} — RCCG JESUS HOUSE, OGBOMOSHO`,
+              serviceDate: matchedService?.serviceDate ?? new Date().toLocaleDateString(),
+              photographer: data?.me?.fullName ?? "Media Unit",
+              fileSizeLabel: `${sizeMb} MB`,
               tags: ["Congregation"],
+              status: "PUBLISHED",
               needsConsentCheck: false,
               fileContentBase64: base64,
             },
@@ -281,50 +325,54 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
             <div className="h-px w-full bg-surface-container" />
           </div>
           <nav className="px-space-md py-space-sm flex flex-col gap-space-xs">
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/admin"
-            >
-              <span className="material-symbols-outlined text-[20px]">grid_view</span>
-              <span className="font-label-md text-label-md">Dashboard</span>
-            </Link>
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/members"
-            >
-              <span className="material-symbols-outlined text-[20px]">group</span>
-              <span className="font-label-md text-label-md">Members</span>
-            </Link>
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/services"
-            >
-              <span className="material-symbols-outlined text-[20px]">event_available</span>
-              <span className="font-label-md text-label-md">Services</span>
-            </Link>
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/departments"
-            >
-              <span className="material-symbols-outlined text-[20px]">account_tree</span>
-              <span className="font-label-md text-label-md">Departments &amp; Activities</span>
-            </Link>
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/usher/live"
-            >
-              <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
-                fact_check
-              </span>
-              <span className="font-label-md text-label-md">Attendance</span>
-            </Link>
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/reports"
-            >
-              <span className="material-symbols-outlined text-[20px]">query_stats</span>
-              <span className="font-label-md text-label-md">Reports</span>
-            </Link>
+            {isAdmin && (
+              <>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/admin"
+                >
+                  <span className="material-symbols-outlined text-[20px]">grid_view</span>
+                  <span className="font-label-md text-label-md">Dashboard</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/members"
+                >
+                  <span className="material-symbols-outlined text-[20px]">group</span>
+                  <span className="font-label-md text-label-md">Members</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/services"
+                >
+                  <span className="material-symbols-outlined text-[20px]">event_available</span>
+                  <span className="font-label-md text-label-md">Services</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/departments"
+                >
+                  <span className="material-symbols-outlined text-[20px]">account_tree</span>
+                  <span className="font-label-md text-label-md">Departments &amp; Activities</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/usher/live"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
+                    fact_check
+                  </span>
+                  <span className="font-label-md text-label-md">Attendance</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/reports"
+                >
+                  <span className="material-symbols-outlined text-[20px]">query_stats</span>
+                  <span className="font-label-md text-label-md">Reports</span>
+                </Link>
+              </>
+            )}
             <Link
               className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg bg-primary-container text-on-primary font-semibold transition-colors"
               href="/admin/photos"
@@ -332,34 +380,76 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
               <span className="material-symbols-outlined text-on-primary text-[20px]">
                 photo_library
               </span>
-              <span className="font-label-md text-label-md">Photos</span>
+              <span className="font-label-md text-label-md">Service Photo Upload Hub</span>
             </Link>
-            <Link
-              className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-              href="/settings"
-            >
-              <span className="material-symbols-outlined text-[20px]">tune</span>
-              <span className="font-label-md text-label-md">Settings</span>
-            </Link>
+            {isAdmin ? (
+              <Link
+                className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                href="/settings"
+              >
+                <span className="material-symbols-outlined text-[20px]">tune</span>
+                <span className="font-label-md text-label-md">Settings</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/dashboard"
+                >
+                  <span className="material-symbols-outlined text-[20px]">home</span>
+                  <span className="font-label-md text-label-md">Member Home</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/photos"
+                >
+                  <span className="material-symbols-outlined text-[20px]">collections</span>
+                  <span className="font-label-md text-label-md">Member Photo Gallery</span>
+                </Link>
+                <Link
+                  className="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  href="/profile"
+                >
+                  <span className="material-symbols-outlined text-[20px]">person</span>
+                  <span className="font-label-md text-label-md">My Profile</span>
+                </Link>
+              </>
+            )}
           </nav>
         </div>
         <div className="p-space-md">
-          <Link
-            className="bg-surface-container-low rounded-xl p-space-md flex items-center justify-between hover:bg-surface-container transition-colors"
-            href="/usher"
-          >
-            <div className="flex flex-col">
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                Usher Portal Link
+          {isAdmin ? (
+            <Link
+              className="bg-surface-container-low rounded-xl p-space-md flex items-center justify-between hover:bg-surface-container transition-colors"
+              href="/usher"
+            >
+              <div className="flex flex-col">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  Usher Portal Link
+                </span>
+                <span className="font-body-sm text-body-sm text-primary font-medium">
+                  Sunday Desk Ready
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-secondary text-[20px]">
+                qr_code_scanner
               </span>
-              <span className="font-body-sm text-body-sm text-primary font-medium">
-                Sunday Desk Ready
+            </Link>
+          ) : (
+            <div className="bg-surface-container-low rounded-xl p-space-md flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  Authorized Unit
+                </span>
+                <span className="font-body-sm text-body-sm text-primary font-semibold">
+                  {data?.me?.department || "Media Unit"}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-secondary text-[20px]">
+                photo_camera
               </span>
             </div>
-            <span className="material-symbols-outlined text-secondary text-[20px]">
-              qr_code_scanner
-            </span>
-          </Link>
+          )}
         </div>
       </aside>
 
@@ -469,16 +559,35 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
 
                   {/* Top Action Buttons */}
                   <div className="flex flex-wrap items-center gap-space-sm self-start xl:self-center shrink-0">
-                    <button
-                      className="h-10 px-space-md bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md flex items-center gap-1.5 transition-colors shadow-sm"
-                      onClick={() => void handlePurgeNow()}
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-outline">
-                        delete_sweep
+                    <div className="flex items-center gap-1.5 bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 h-10 shadow-xs">
+                      <span className="material-symbols-outlined text-[18px] text-primary">
+                        event_available
                       </span>
-                      <span>Clear Temp Cache</span>
-                    </button>
+                      <select
+                        aria-label="Select Service for Photo Upload"
+                        className="bg-transparent font-label-md text-label-md text-on-surface focus:outline-none cursor-pointer"
+                        value={selectedServiceName}
+                        onChange={(e) => setSelectedServiceName(e.target.value)}
+                      >
+                        {serviceOptions.map((svc) => (
+                          <option key={svc.id} value={svc.name}>
+                            {svc.name} ({svc.serviceDate})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {isAdmin && (
+                      <button
+                        className="h-10 px-space-md bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md flex items-center gap-1.5 transition-colors shadow-sm"
+                        onClick={() => void handlePurgeNow()}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[18px] text-outline">
+                          delete_sweep
+                        </span>
+                        <span>Clear Temp Cache</span>
+                      </button>
+                    )}
                     <button
                       className="h-10 px-space-md bg-surface-container-lowest hover:bg-surface-container text-primary rounded-lg font-label-md text-label-md flex items-center gap-1.5 transition-colors shadow-sm"
                       onClick={() => fileInputRef.current?.click()}

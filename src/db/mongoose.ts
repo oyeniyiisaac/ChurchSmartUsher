@@ -22,7 +22,8 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   try {
     globalForMongoose.mongooseConnection ??= mongoose.connect(uri, {
-      serverSelectionTimeoutMS: isTest ? 300 : 10000,
+      serverSelectionTimeoutMS: isTest ? 300 : 30000,
+      family: 4,
     });
     await globalForMongoose.mongooseConnection;
     return mongoose;

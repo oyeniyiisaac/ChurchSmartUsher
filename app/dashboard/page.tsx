@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { hasAdminAccess, hasPhotoUploadAccess, hasUsherAccess } from "@/auth/permissions";
+
 const DASHBOARD_QUERY = gql`
   query DashboardData {
     me {
@@ -13,6 +15,8 @@ const DASHBOARD_QUERY = gql`
       phone
       avatarUrl
       role
+      department
+      activities
       status
       currentStreak
       longestStreak
@@ -56,6 +60,8 @@ interface DashboardQueryData {
     phone: string;
     avatarUrl?: string | null;
     role: "MEMBER" | "USHER" | "ADMIN";
+    department?: string | null;
+    activities?: string[] | null;
     status: string;
     currentStreak: number;
     longestStreak: number;
@@ -306,42 +312,77 @@ export default function DashboardPage(): ReactNode {
                       security
                     </span>
                     <span className="font-label-md text-label-md text-on-surface font-semibold">
-                      Role Access &amp; Session Guard
+                      Role Access &amp; Unit Clearance
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="/usher"
-                      className="font-label-sm text-label-sm text-primary hover:underline"
-                    >
-                      Usher QR
-                    </Link>
-                    <span className="text-outline">·</span>
-                    <Link
-                      href="/usher/live"
-                      className="font-label-sm text-label-sm text-primary hover:underline"
-                    >
-                      Live Roster
-                    </Link>
-                    <span className="text-outline">·</span>
-                    <Link
-                      href="/admin"
-                      className="font-label-sm text-label-sm text-primary hover:underline"
-                    >
-                      Admin
-                    </Link>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm">
+                      {member?.role ?? "MEMBER"} · {member?.department || "General Member"}
+                    </span>
+                    {hasUsherAccess(member) && (
+                      <>
+                        <Link
+                          href="/usher"
+                          className="font-label-sm text-label-sm text-primary hover:underline"
+                        >
+                          Usher QR
+                        </Link>
+                        <span className="text-outline">·</span>
+                        <Link
+                          href="/usher/live"
+                          className="font-label-sm text-label-sm text-primary hover:underline"
+                        >
+                          Live Roster
+                        </Link>
+                      </>
+                    )}
+                    {hasPhotoUploadAccess(member) && (
+                      <>
+                        <span className="text-outline">·</span>
+                        <Link
+                          href="/admin/photos"
+                          className="font-label-sm text-label-sm text-primary font-semibold hover:underline"
+                        >
+                          Media Photo Upload
+                        </Link>
+                      </>
+                    )}
+                    {hasAdminAccess(member) && (
+                      <>
+                        <span className="text-outline">·</span>
+                        <Link
+                          href="/admin"
+                          className="font-label-sm text-label-sm text-primary hover:underline"
+                        >
+                          Admin
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleTestAdminGuard()}
-                  className="h-10 px-space-md rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    admin_panel_settings
-                  </span>
-                  <span>Test Admin-Only Query (adminOnlyCheck)</span>
-                </button>
+                {hasPhotoUploadAccess(member) && !hasAdminAccess(member) && (
+                  <Link
+                    href="/admin/photos"
+                    className="h-10 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 hover:bg-primary transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      add_photo_alternate
+                    </span>
+                    <span>Media Unit: Upload Service Photos</span>
+                  </Link>
+                )}
+                {hasAdminAccess(member) && (
+                  <button
+                    type="button"
+                    onClick={() => void handleTestAdminGuard()}
+                    className="h-10 px-space-md rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      admin_panel_settings
+                    </span>
+                    <span>Verify Admin Clearance (adminOnlyCheck)</span>
+                  </button>
+                )}
                 {adminCheckMessage && (
                   <div
                     className={`rounded-lg px-3 py-2 font-body-sm text-body-sm ${

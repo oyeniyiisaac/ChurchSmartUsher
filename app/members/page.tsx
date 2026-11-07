@@ -46,10 +46,30 @@ const ASSIGN_AFFILIATIONS_MUTATION = gql`
   mutation AssignMemberAffiliations($input: AssignAffiliationsInput!) {
     assignMemberAffiliations(input: $input) {
       id
+      role
       department
       activities
       departmentIds
       activityIds
+    }
+  }
+`;
+
+const UPDATE_MEMBER_ROLE_MUTATION = gql`
+  mutation UpdateMemberRole($memberId: ID!, $role: Role!) {
+    updateMemberRole(memberId: $memberId, role: $role) {
+      id
+      role
+      department
+    }
+  }
+`;
+
+const CREATE_DEPT_INLINE_MUTATION = gql`
+  mutation CreateDeptInline($input: DepartmentInput!) {
+    createDepartment(input: $input) {
+      id
+      name
     }
   }
 `;
@@ -116,6 +136,8 @@ export default function MembersDirectoryPage(): ReactNode {
     fetchPolicy: "network-only",
   });
   const [assignAffiliations, { loading: assigning }] = useMutation(ASSIGN_AFFILIATIONS_MUTATION);
+  const [updateRoleMutation] = useMutation(UPDATE_MEMBER_ROLE_MUTATION);
+  const [createDeptMutation] = useMutation(CREATE_DEPT_INLINE_MUTATION);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("ALL");
@@ -123,6 +145,7 @@ export default function MembersDirectoryPage(): ReactNode {
   const [selectedRowId, setSelectedRowId] = useState<string>("");
   const [assignModalOpen, setAssignModalOpen] = useState<boolean>(false);
   const [chosenDept, setChosenDept] = useState<string>("General Congregation");
+  const [chosenRole, setChosenRole] = useState<"MEMBER" | "USHER" | "ADMIN">("MEMBER");
   const [chosenActivities, setChosenActivities] = useState<string[]>([]);
   const [customOverrides, setCustomOverrides] = useState<
     Record<string, { primaryUnit: string; activities: string[] }>
@@ -220,6 +243,13 @@ export default function MembersDirectoryPage(): ReactNode {
 
   function openAssignModal(): void {
     setChosenDept(selectedMember.primaryUnit);
+    setChosenRole(
+      selectedMember.unitRole === "ADMIN"
+        ? "ADMIN"
+        : selectedMember.unitRole === "USHER"
+          ? "USHER"
+          : "MEMBER",
+    );
     setChosenActivities(selectedMember.activities);
     setAssignModalOpen(true);
   }
@@ -245,20 +275,48 @@ export default function MembersDirectoryPage(): ReactNode {
     const dbActs = (data?.activities ?? []) as Array<{ id: string; name: string }>;
 
     const matchedMember = dbMembers.find((m) => m.memberCode === selectedMember.code);
-    const matchedDept = dbDepts.find((d) => d.name === chosenDept);
+    let deptId = dbDepts.find((d) => d.name.toLowerCase() === chosenDept.toLowerCase())?.id;
     const matchedActIds = dbActs.filter((a) => chosenActivities.includes(a.name)).map((a) => a.id);
 
-    if (matchedMember && matchedDept) {
+    if (matchedMember) {
       try {
-        await assignAffiliations({
-          variables: {
-            input: {
-              memberId: matchedMember.id,
-              departmentIds: [matchedDept.id],
-              activityIds: matchedActIds,
+        if (!deptId && chosenDept.trim().length > 0) {
+          const createdRes = await createDeptMutation({
+            variables: {
+              input: {
+                name: chosenDept,
+                description: `${chosenDept} — RCCG JESUS HOUSE, OGBOMOSHO`,
+                icon: chosenDept.toLowerCase().includes("media")
+                  ? "photo_camera"
+                  : chosenDept.toLowerCase().includes("usher")
+                    ? "badge"
+                    : "groups",
+                leadName: "",
+              },
             },
+          });
+          deptId = createdRes.data?.createDepartment?.id as string | undefined;
+        }
+
+        if (deptId) {
+          await assignAffiliations({
+            variables: {
+              input: {
+                memberId: matchedMember.id,
+                departmentIds: [deptId],
+                activityIds: matchedActIds,
+              },
+            },
+          });
+        }
+
+        await updateRoleMutation({
+          variables: {
+            memberId: matchedMember.id,
+            role: chosenRole,
           },
         });
+
         await refetch();
       } catch {
         // Preview fallback already applied above
@@ -266,7 +324,9 @@ export default function MembersDirectoryPage(): ReactNode {
     }
 
     setAssignModalOpen(false);
-    setToastMessage(`Updated departments & activities for ${selectedMember.name}`);
+    setToastMessage(
+      `Updated role (${chosenRole}) & unit (${chosenDept}) for ${selectedMember.name}`,
+    );
   }
 
   return (
@@ -1307,17 +1367,47 @@ export default function MembersDirectoryPage(): ReactNode {
             <form onSubmit={(e) => void handleSaveAssignment(e)} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="font-label-sm text-label-sm text-on-surface-variant">
-                  Primary Ministry Department
+                  System Access Role (Security Clearance)
+                </label>
+                <select
+                  value={chosenRole}
+                  onChange={(e) => setChosenRole(e.target.value as "MEMBER" | "USHER" | "ADMIN")}
+                  className="h-11 px-space-md rounded-xl bg-surface-container-low text-on-surface font-body-sm text-body-sm focus:outline-none"
+                >
+                  <option value="MEMBER">
+                    MEMBER — Standard Member Access (Media Unit gets Photo Upload)
+                  </option>
+                  <option value="USHER">USHER — Usher QR &amp; Live Attendance Desk</option>
+                  <option value="ADMIN">ADMIN — Full Parish Administrator</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-label-sm text-label-sm text-on-surface-variant">
+                  Primary Ministry Department / Unit
                 </label>
                 <select
                   value={chosenDept}
-                  onChange={(e) => setChosenDept(e.target.value)}
+                  onChange={(e) => {
+                    const nextDept = e.target.value;
+                    setChosenDept(nextDept);
+                    if (chosenRole !== "ADMIN") {
+                      if (nextDept.toLowerCase().includes("usher")) {
+                        setChosenRole("USHER");
+                      } else {
+                        setChosenRole("MEMBER");
+                      }
+                    }
+                  }}
                   className="h-11 px-space-md rounded-xl bg-surface-container-low text-on-surface font-body-sm text-body-sm focus:outline-none"
                 >
                   {[
+                    "General Congregation",
+                    "Media Unit",
+                    "Ushering Unit",
                     "Sanctuary Choir",
-                    "Ushering & Protocol",
-                    "Media & Sound",
+                    "Prayer Band",
+                    "Sanctuary Keepers",
                     "Youth Fellowship",
                     "Sunday School",
                     "Women of Grace",
