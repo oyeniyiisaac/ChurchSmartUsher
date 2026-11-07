@@ -6,6 +6,11 @@ import { useState, type ReactNode } from "react";
 
 const MY_STREAK_QUERY = gql`
   query MyStreakPage {
+    me {
+      id
+      fullName
+      avatarUrl
+    }
     myStreak {
       currentStreak
       longestStreak
@@ -26,22 +31,63 @@ const MY_STREAK_QUERY = gql`
         status
       }
     }
+    servicePhotos {
+      id
+      title
+      imageUrl
+    }
   }
 `;
 
+interface StreakPageData {
+  me: {
+    id: string;
+    fullName: string;
+    avatarUrl?: string | null;
+  } | null;
+  myStreak?: {
+    currentStreak: number;
+    longestStreak: number;
+    totalInYear: number;
+    monthCompletedLabel: string;
+    badges: Array<{
+      code: string;
+      title: string;
+      threshold: number;
+      unlocked: boolean;
+      progressCount: number;
+      subtitle: string;
+    }>;
+    calendarEntries: Array<{
+      serviceId: string;
+      label: string;
+      subtitle: string;
+      status: string;
+    }>;
+  } | null;
+  servicePhotos: Array<{
+    id: string;
+    title: string;
+    imageUrl: string;
+  }>;
+}
+
 export default function StreakPage(): ReactNode {
-  const { data } = useQuery(MY_STREAK_QUERY, {
+  const { data } = useQuery<StreakPageData>(MY_STREAK_QUERY, {
     fetchPolicy: "network-only",
   });
 
   const [reminderSaved, setReminderSaved] = useState<boolean>(false);
   const [sharedAffirmation, setSharedAffirmation] = useState<boolean>(false);
 
-  const currentStreak: number = (data?.myStreak?.currentStreak as number | undefined) ?? 7;
-  const longestStreak: number = (data?.myStreak?.longestStreak as number | undefined) ?? 14;
-  const totalInYear: number = (data?.myStreak?.totalInYear as number | undefined) ?? 38;
-  const monthCompletedLabel: string =
-    (data?.myStreak?.monthCompletedLabel as string | undefined) ?? "3 of 4";
+  const currentStreak: number = data?.myStreak?.currentStreak ?? 0;
+  const longestStreak: number = data?.myStreak?.longestStreak ?? 0;
+  const totalInYear: number = data?.myStreak?.totalInYear ?? 0;
+  const monthCompletedLabel: string = data?.myStreak?.monthCompletedLabel ?? "0 of 0";
+  const calendarEntries = data?.myStreak?.calendarEntries ?? [];
+  const badges = data?.myStreak?.badges ?? [];
+  const unlockedBadgesCount = badges.filter((b) => b.unlocked).length;
+  const heroPhotoUrl = data?.servicePhotos?.[0]?.imageUrl || "/rccg-logo.png";
 
   const pillarProgressPercent = Math.min(100, Number(((currentStreak / 12) * 100).toFixed(1)));
   const servicesLeftForPillar = Math.max(0, 12 - currentStreak);
@@ -53,13 +99,13 @@ export default function StreakPage(): ReactNode {
         <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <img
-              alt="ChurchConnect Brand Logo"
-              className="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Logo"
+              className="h-8 w-8 object-contain"
+              src="/rccg-logo.png"
             />
             <div className="flex flex-col">
               <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">
-                ChurchConnect
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
               <span className="font-headline-sm text-headline-sm text-on-surface leading-tight">
                 Streak
@@ -80,8 +126,8 @@ export default function StreakPage(): ReactNode {
             >
               <img
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                className="w-8 h-8 rounded-full object-cover bg-surface-container"
+                src={data?.me?.avatarUrl || "/rccg-logo.png"}
               />
             </Link>
           </div>
@@ -103,7 +149,7 @@ export default function StreakPage(): ReactNode {
                 >
                   auto_awesome
                 </span>
-                Active Grace Period
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
             <h1 className="font-headline-lg-mobile md:text-3xl text-headline-lg-mobile text-on-surface">
@@ -116,9 +162,8 @@ export default function StreakPage(): ReactNode {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-5 flex flex-col gap-6">
-              {/* Big Streak Highlight Card (Warm Royal Blue with Soft Gold Accents) */}
+              {/* Big Streak Highlight Card */}
               <div className="relative overflow-hidden rounded-xl bg-primary-container text-on-primary shadow-xl p-space-lg flex flex-col gap-space-md">
-                {/* Ambient Golden Glow */}
                 <div className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-secondary-container/25 blur-3xl pointer-events-none" />
                 <div className="absolute -bottom-20 -left-12 w-48 h-48 rounded-full bg-primary/40 blur-2xl pointer-events-none" />
 
@@ -141,7 +186,6 @@ export default function StreakPage(): ReactNode {
                   </span>
                 </div>
 
-                {/* Giant Streak Stat */}
                 <div className="relative z-10 flex items-baseline gap-3 my-1">
                   <span className="font-display-lg text-[68px] leading-none font-bold text-on-primary tracking-tight">
                     {currentStreak}
@@ -156,7 +200,6 @@ export default function StreakPage(): ReactNode {
                   </div>
                 </div>
 
-                {/* Progress to Next Badge Sparkline Bar */}
                 <div className="relative z-10 flex flex-col gap-1.5 w-full">
                   <div className="flex justify-between font-label-sm text-label-sm text-primary-fixed">
                     <span>Quarterly Pillar Progress</span>
@@ -172,7 +215,6 @@ export default function StreakPage(): ReactNode {
                   </div>
                 </div>
 
-                {/* Supporting 3-Column Metrics Grid */}
                 <div className="relative z-10 grid grid-cols-3 gap-2 pt-3 border-t-0 bg-surface-container-lowest/10 rounded-lg p-2.5">
                   <div className="flex flex-col items-center text-center">
                     <span className="font-label-sm text-label-sm text-primary-fixed-dim">
@@ -187,7 +229,7 @@ export default function StreakPage(): ReactNode {
                   </div>
                   <div className="flex flex-col items-center text-center">
                     <span className="font-label-sm text-label-sm text-primary-fixed-dim">
-                      In 2024
+                      This Year
                     </span>
                     <span className="font-headline-sm text-headline-sm font-bold text-secondary-fixed-dim">
                       {totalInYear}
@@ -198,7 +240,7 @@ export default function StreakPage(): ReactNode {
                   </div>
                   <div className="flex flex-col items-center text-center">
                     <span className="font-label-sm text-label-sm text-primary-fixed-dim">
-                      Nov 2024
+                      Recent
                     </span>
                     <span className="font-headline-sm text-headline-sm font-bold text-on-primary">
                       {monthCompletedLabel}
@@ -249,20 +291,20 @@ export default function StreakPage(): ReactNode {
                       Sanctuary Atmosphere
                     </span>
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      Memories from last Lord&apos;s day gathering
+                      RCCG JESUS HOUSE, OGBOMOSHO
                     </span>
                   </div>
                   <span className="material-symbols-outlined text-secondary">church</span>
                 </div>
-                <div className="relative w-full h-40 rounded-lg overflow-hidden">
+                <div className="relative w-full h-40 rounded-lg overflow-hidden bg-surface-container-low">
                   <img
                     alt="Sanctuary worship atmosphere"
-                    className="w-full h-full object-cover"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDefiLYSUlJ8UQRl4jsZYRDF6r6lykcfAxPFqosJWlDzCzpcWDsczypqMF-Y120kt7ympEl9Gl474W5L7RD1ktIufHBTK4Df_sVt-jeGc6m-xGubq-dQ5VzZMLk4XZPf1nx6v7VWTqZBFrEqahXAcF1J1CFpV0zIFh2rPerwg_OTvJM0XfMuVX1wj7Rv5MlrPMVng1AzA4OA8S13kw4XPZgoGGSVd2hcksVntZu_EQ"
+                    className="w-full h-full object-contain p-2"
+                    src={heroPhotoUrl}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-primary-container/80 via-transparent to-transparent flex items-end p-3">
                     <p className="font-label-md text-label-md text-on-primary font-medium">
-                      Over 320 congregants gathered together in grace
+                      RCCG JESUS HOUSE, OGBOMOSHO Fellowship
                     </p>
                   </div>
                 </div>
@@ -270,7 +312,7 @@ export default function StreakPage(): ReactNode {
             </div>
 
             <div className="lg:col-span-7 flex flex-col gap-6">
-              {/* Month Calendar Card (November 2024) */}
+              {/* Calendar Card (Database Services Log) */}
               <div className="rounded-xl bg-surface-container-lowest p-space-md sm:p-6 shadow-sm flex flex-col gap-space-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -278,7 +320,7 @@ export default function StreakPage(): ReactNode {
                       calendar_month
                     </span>
                     <span className="font-headline-sm text-headline-sm text-on-surface">
-                      November 2024
+                      Services Attendance Log
                     </span>
                   </div>
                   <span className="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
@@ -286,122 +328,63 @@ export default function StreakPage(): ReactNode {
                   </span>
                 </div>
 
-                {/* Calendar Service Check-in Timeline */}
                 <div className="flex flex-col gap-2.5">
-                  {/* Nov 3: Attended */}
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed shadow-sm">
-                        <span className="material-symbols-outlined text-[22px] font-bold">
-                          check
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="font-label-lg text-label-lg text-on-surface">
-                            Sunday, Nov 3
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed-dim/30 text-on-tertiary-fixed-variant font-label-sm text-[11px] font-semibold">
-                            Verified
-                          </span>
+                  {calendarEntries.length > 0 ? (
+                    calendarEntries.map((entry) => (
+                      <div
+                        key={entry.serviceId}
+                        className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm ${
+                              entry.status === "ATTENDED"
+                                ? "bg-tertiary-fixed text-on-tertiary-fixed"
+                                : "bg-surface-container-highest text-primary"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[22px] font-bold">
+                              {entry.status === "ATTENDED" ? "check" : "schedule"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="font-label-lg text-label-lg text-on-surface">
+                                {entry.label}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed-dim/30 text-on-tertiary-fixed-variant font-label-sm text-[11px] font-semibold">
+                                {entry.status}
+                              </span>
+                            </div>
+                            <span className="font-body-sm text-body-sm text-on-surface-variant">
+                              {entry.subtitle}
+                            </span>
+                          </div>
                         </div>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          First Service • 08:30 AM • Sanctuary A
-                        </span>
+                        {entry.status === "UPCOMING" ? (
+                          <button
+                            type="button"
+                            onClick={() => setReminderSaved(true)}
+                            className={`px-2.5 py-1 rounded font-label-sm text-label-sm hover:opacity-90 active:scale-95 transition-all cursor-pointer ${
+                              reminderSaved
+                                ? "bg-tertiary text-on-tertiary"
+                                : "bg-primary text-on-primary"
+                            }`}
+                          >
+                            {reminderSaved ? "Saved ✓" : "Remind"}
+                          </button>
+                        ) : (
+                          <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
+                            chevron_right
+                          </span>
+                        )}
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-4 rounded-lg bg-surface-container-low text-center text-on-surface-variant font-body-sm text-body-sm">
+                      No Sunday services recorded in the database yet.
                     </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
-                      chevron_right
-                    </span>
-                  </div>
-
-                  {/* Nov 10: Attended */}
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed shadow-sm">
-                        <span className="material-symbols-outlined text-[22px] font-bold">
-                          check
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="font-label-lg text-label-lg text-on-surface">
-                            Sunday, Nov 10
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed-dim/30 text-on-tertiary-fixed-variant font-label-sm text-[11px] font-semibold">
-                            Verified
-                          </span>
-                        </div>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          Praise Service • 10:30 AM • Main Hall
-                        </span>
-                      </div>
-                    </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
-                      chevron_right
-                    </span>
-                  </div>
-
-                  {/* Nov 17: Attended */}
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed shadow-sm">
-                        <span className="material-symbols-outlined text-[22px] font-bold">
-                          check
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="font-label-lg text-label-lg text-on-surface">
-                            Sunday, Nov 17
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed-dim/30 text-on-tertiary-fixed-variant font-label-sm text-[11px] font-semibold">
-                            Verified
-                          </span>
-                        </div>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          First Service • 08:30 AM • Sanctuary A
-                        </span>
-                      </div>
-                    </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
-                      chevron_right
-                    </span>
-                  </div>
-
-                  {/* Nov 24: Upcoming */}
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface-container-high/60">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary shadow-inner">
-                        <span className="material-symbols-outlined text-[20px]">schedule</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="font-label-lg text-label-lg text-on-surface font-semibold">
-                            Sunday, Nov 24
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-secondary-container/20 text-secondary font-label-sm text-[11px] font-semibold">
-                            Upcoming
-                          </span>
-                        </div>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          Harvest Thanksgiving • 09:00 AM
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      id="setReminderBtn"
-                      onClick={() => setReminderSaved(true)}
-                      className={`px-2.5 py-1 rounded font-label-sm text-label-sm hover:opacity-90 active:scale-95 transition-all cursor-pointer ${
-                        reminderSaved
-                          ? "bg-tertiary text-on-tertiary"
-                          : "bg-primary text-on-primary"
-                      }`}
-                    >
-                      {reminderSaved ? "Saved ✓" : "Remind"}
-                    </button>
-                  </div>
+                  )}
                 </div>
 
                 {/* Status Legend */}
@@ -416,7 +399,7 @@ export default function StreakPage(): ReactNode {
                   </div>
                   <div className="flex items-center gap-1.5 font-label-sm text-label-sm">
                     <span className="w-2.5 h-2.5 rounded-full bg-outline-variant" />
-                    <span>Excused/Departed</span>
+                    <span>Missed</span>
                   </div>
                 </div>
               </div>
@@ -433,12 +416,12 @@ export default function StreakPage(): ReactNode {
                     </span>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">
-                    1 Unlocked
+                    {unlockedBadgesCount} Unlocked
                   </span>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  {/* Badge 1: Faithful Starter (Unlocked) */}
+                  {/* Badge 1: Faithful Starter */}
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low">
                     <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-secondary-container to-secondary flex items-center justify-center text-on-secondary shadow-md shrink-0">
                       <span
@@ -447,10 +430,6 @@ export default function StreakPage(): ReactNode {
                       >
                         stars
                       </span>
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75" />
-                        <span className="relative inline-flex rounded-full h-4 w-4 bg-secondary" />
-                      </span>
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col">
                       <div className="flex items-center gap-2">
@@ -458,26 +437,18 @@ export default function StreakPage(): ReactNode {
                           Faithful Starter
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-secondary-container/20 text-secondary font-label-sm text-[11px] font-semibold">
-                          Unlocked
+                          {longestStreak >= 4
+                            ? "Unlocked"
+                            : `${Math.max(0, 4 - currentStreak)} left`}
                         </span>
                       </div>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">
                         4 Services in a Row
                       </span>
-                      <span className="font-label-sm text-label-sm text-secondary font-medium">
-                        Earned October 2024 • Steadfast Journey
-                      </span>
                     </div>
-                    <button
-                      type="button"
-                      className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors"
-                      title="View Certificate"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">share</span>
-                    </button>
                   </div>
 
-                  {/* Badge 2: Quarterly Pillar (Locked) */}
+                  {/* Badge 2: Quarterly Pillar */}
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-container-high/40">
                     <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface-variant shrink-0">
                       <span className="material-symbols-outlined text-[28px]">lock</span>
@@ -488,7 +459,7 @@ export default function StreakPage(): ReactNode {
                           Quarterly Pillar
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-[11px]">
-                          In Progress
+                          {longestStreak >= 12 ? "Unlocked" : "In Progress"}
                         </span>
                       </div>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">
@@ -508,7 +479,7 @@ export default function StreakPage(): ReactNode {
                     </div>
                   </div>
 
-                  {/* Badge 3: Year of Fellowship (Locked) */}
+                  {/* Badge 3: Year of Fellowship */}
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-container-high/40">
                     <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface-variant shrink-0">
                       <span className="material-symbols-outlined text-[28px]">
@@ -521,7 +492,7 @@ export default function StreakPage(): ReactNode {
                           Year of Fellowship
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-[11px]">
-                          Locked
+                          {longestStreak >= 52 ? "Unlocked" : "Locked"}
                         </span>
                       </div>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">

@@ -8,8 +8,10 @@ import {
   Department,
   type DepartmentDocument,
   Member,
+  type UserRole,
 } from "@/db/models";
 import { connectToDatabase } from "@/db/mongoose";
+import { deleteImageFromCloudinary, uploadImageToCloudinary } from "./cloudinary";
 import {
   type ActivityInput,
   activityInputSchema,
@@ -144,6 +146,43 @@ export async function updateMyProfile(
     member.notes = parsed.notes ?? undefined;
   }
 
+  if (parsed.avatarBase64 && parsed.avatarBase64.trim().length > 0) {
+    try {
+      const uploaded = await uploadImageToCloudinary({
+        fileContentBase64: parsed.avatarBase64,
+        folder: "rccg_jesus_house_ogbomosho/avatars",
+      });
+      if (member.avatarPublicId && member.avatarPublicId !== uploaded.publicId) {
+        await deleteImageFromCloudinary(member.avatarPublicId);
+      }
+      member.avatarUrl = uploaded.secureUrl;
+      member.avatarPublicId = uploaded.publicId;
+    } catch {
+      // Fallback to data URI in offline/test environment
+      member.avatarUrl = parsed.avatarBase64.startsWith("data:")
+        ? parsed.avatarBase64
+        : `data:image/jpeg;base64,${parsed.avatarBase64}`;
+    }
+  } else if (parsed.avatarUrl !== undefined && parsed.avatarUrl !== null) {
+    member.avatarUrl = parsed.avatarUrl;
+  }
+
+  await member.save();
+  return toAuthenticatedMember(member);
+}
+
+export async function updateMemberRole(
+  memberId: string,
+  role: UserRole,
+): Promise<AuthenticatedMember> {
+  await connectToDatabase();
+  const member = await Member.findById(memberId);
+  if (!member) {
+    throw new GraphQLError("Member not found.", {
+      extensions: { code: "NOT_FOUND" },
+    });
+  }
+  member.role = role;
   await member.save();
   return toAuthenticatedMember(member);
 }

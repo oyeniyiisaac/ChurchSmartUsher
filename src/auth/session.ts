@@ -18,6 +18,7 @@ export type AuthenticatedMember = {
   phone: string;
   email?: string | null;
   gender?: MemberGender | null;
+  avatarUrl?: string | null;
   role: UserRole;
   status?: string;
   department: string;
@@ -39,6 +40,7 @@ export function toAuthenticatedMember(doc: MemberDocument): AuthenticatedMember 
     phone: doc.phone,
     email: doc.email ?? null,
     gender: (doc.gender as MemberGender | undefined) ?? "Male",
+    avatarUrl: doc.avatarUrl ?? "",
     role: doc.role,
     status: doc.status ?? "ACTIVE",
     department: doc.department,

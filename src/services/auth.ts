@@ -74,10 +74,11 @@ export async function registerMember(rawInput: RegisterInput): Promise<AuthPaylo
     });
   }
 
-  const departmentName = parsed.department || "Sanctuary Choir";
+  const departmentName = parsed.department || "Unassigned";
   const matchedDept = await Department.findOne({ name: departmentName });
   const memberCode = await generateNextMemberCode();
   const passwordHash = await hashPassword(parsed.password);
+  const totalMembersCount = await Member.countDocuments();
 
   const created = await Member.create({
     fullName: parsed.fullName,
@@ -85,10 +86,10 @@ export async function registerMember(rawInput: RegisterInput): Promise<AuthPaylo
     email: parsed.email,
     gender: parsed.gender ?? "Male",
     passwordHash,
-    role: "MEMBER",
+    role: totalMembersCount === 0 ? "ADMIN" : "MEMBER",
     status: "ACTIVE",
     department: departmentName,
-    activities: ["Sunday School Class 4"],
+    activities: [],
     departmentIds: matchedDept ? [matchedDept._id] : [],
     activityIds: [],
     memberCode,

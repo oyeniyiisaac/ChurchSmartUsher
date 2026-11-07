@@ -6,7 +6,12 @@ import { type ReactElement, useState } from "react";
 
 const SERVICE_PHOTOS_QUERY = gql`
   query GetServicePhotos($albumKey: String) {
-    servicePhotos(albumKey: $albumKey) {
+    me {
+      id
+      fullName
+      avatarUrl
+    }
+    servicePhotos(albumKey: "all") {
       id
       title
       fileName
@@ -32,99 +37,6 @@ interface GalleryPhotoItem {
   badgeVariant: "today" | "neutral" | "amber" | "urgent";
 }
 
-const DEFAULT_GALLERY_ITEMS: GalleryPhotoItem[] = [
-  {
-    id: "photo-1",
-    title: "Voices of Grace",
-    albumKey: "today",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCFIkmYeJ_X_xQqkSkBDwNiTxkFYs_HOuKPhRUnEBPUbKrD-RIgyWOHifF4jcs5f4Afn6woYtA1GqcU_XmWm3Mls5v65FM3-JGM6hZAFhkEQKnj_rxZNLPVb6GsMMOZ-kS_J2AdMrabdyVtOfBwSv0ocJA1EwoT9k0tHNGEI7HxYzFScW8YBilPNozDA_bGwK1Eh4iz9si2bpXOFmuXmdhbqRBOZz4Gl_wZQvl4pMY",
-    alt: "Choir Praise",
-    badgeText: "Today",
-    badgeVariant: "today",
-  },
-  {
-    id: "photo-2",
-    title: "The Sermon",
-    albumKey: "today",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAFyztO9XKS5jYCAbc2Ezm9gq7Q1kcuwcCfw_jK9fWRdNQRv6x3nf1hCKXWr9rXghgRVIjiKUusnQI-rnbrao_Y497WMxB3avprG9Ol4L0Tqq4HwUqRhfaUyKApO9sBqcdnP-It1bu9SDkaVLexnEx4NfMlPcKQNl71tXxSbCb-LreLdNHykpM1klGQ4ew9635Me6jKbmpAojmCAutYm3wcDMSwI_PzBMjFSl5oExU",
-    alt: "Word of Grace",
-    badgeText: "7d left",
-    badgeVariant: "neutral",
-  },
-  {
-    id: "photo-3",
-    title: "Entrance Welcome",
-    albumKey: "today",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAA6CUTDOr5X3n8F-e_F0cJqew5VEqyyHMya9TKnQAwMuZn_zVtcV0Hj9ihs_Envm2w-YsoOUdHIFBcz7ck_7Z1ht6f9MNVCGZ1Q42Q_qkpBy_dFhMkWUrYq6SujUlI-hKfjQ_hyxBWdaDGH7l9zDyTs4FSpx8e9DWh5nECIme7RpRwCWccXbQtTd9C3tEnysQb9m-haPbjx5cdCzAQx6KFG7CVZT2P38ck21-RdPg",
-    alt: "Ushers Welcoming",
-    badgeText: "Today",
-    badgeVariant: "today",
-  },
-  {
-    id: "photo-4",
-    title: "Deep Worship",
-    albumKey: "today",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBTvZCsHu5n9CXCQxokFEPH-kFxZuKSWA4NxVqqcZMbRowbmI9al38EslWFycK7B3Cvsx4PCD5z8IDMkNT5yOKi4WHHvCEK3nwc3REO7WUvz-Ox1_-rgHGYH8lgF0BXkB9-oTU4pipwQCCU3YwaKg1Ba3mcLg0dejrQXoCagAzF-LNz3PfWEpE7wU7zd73qP_HdIgjyyjC7LaNULEo8EooPIzwuTq6-DfgIAwipcmA",
-    alt: "Worship Sanctuary",
-    badgeText: "7d left",
-    badgeVariant: "neutral",
-  },
-  {
-    id: "photo-5",
-    title: "Thanksgiving Joy",
-    albumKey: "thanksgiving",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDlsLk47Ls8c2ZlQtKkbITssCUhsCxc-KIurouC6QMfAvdV7yAYmO6F5vxBcFglGLsYKzXFepeMNOIdpBYGf1Pl53gME7frEKUo1j6I19pnSVw99H3moEPGZXYAYkGKlSYiyuh_0yjMQCdxEtO2jcJwYYAsblIccyxAZ7mzN1MvCfyEJyrxRCrHDFClmSiQwS2B_XpYr76_kvyIjqjhZoLKdv9SfXawKIiFW7DOVz4",
-    alt: "Thanksgiving Joy",
-    badgeText: "3d left",
-    badgeVariant: "amber",
-  },
-  {
-    id: "photo-6",
-    title: "Children Recital",
-    albumKey: "thanksgiving",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDJZrhy2NPwmlgqzYQHh1VeWI2SSTDUoJuCL9NpZgiLKCfV-CMrCGG_TrZyx10SxOLiGfgHX54yvQCZL_mf2PeoqPU1Nohr9rzb4dOEmiP2VD61sCYMKvzcjVED2K6dD-Q3MsuRIR6pWAw4YTsTLT9T1PNB0Dsgruq9oDGO_SjL5LcPxtIhMdEcBvUhsXMF5T-HPj_4t1YMNTzfdD5CxdnsncNpAUeY4yxSXaDbED4",
-    alt: "Kids Ministry",
-    badgeText: "3d left",
-    badgeVariant: "amber",
-  },
-  {
-    id: "photo-7",
-    title: "Courtyard Smiles",
-    albumKey: "thanksgiving",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDUzDedsfSo8l-h9uud_0qc2UjaxWf6dsni4Rul7kQ4nwlBcDRfNE9q_4eP9wJvWaF4mHzMJYl6dfyzZj-8Q0ncdR5njBQsNqqhQXOX1mKBhQOiT0VfTVi32OJSzZya2xuWtUiDqXZTg8tn-QCXT5AHFbz_V7E7gV3IHxVymPC8_TVQYmXSY5KMMnF60ociY36K7PuI8Btq-tCQackHkyaRfBCjXolwdAO2hC6UI-g",
-    alt: "Youth Fellowship",
-    badgeText: "3d left",
-    badgeVariant: "amber",
-  },
-  {
-    id: "photo-8",
-    title: "Solo Minister",
-    albumKey: "choir",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBsdo8jVOaxFelJzxnfdC122VNSbFdbqErcIERjiA4-2t0okYmg34LNmVYCAxIUJffhwPpEUCET7nK3IaRzOHH4CcXisObdTphT9Qut3CDkkGQgJCCRcv7GBte7P79J9jxFkLxoIdlTE_Oo5B5xh7W88eusSS1zpUgn_ZeBsWBziBqAuXEF0qiy_i4g3oc3SwaDC4MT7JUHcxfIcZnQ_o7GWv4BF6rwa-bfzFEV38U",
-    alt: "Choir Soloist",
-    badgeText: "1d left",
-    badgeVariant: "urgent",
-  },
-  {
-    id: "photo-9",
-    title: "Sanctuary Brass",
-    albumKey: "choir",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCUc_c72PpuvnKasxlubgUPacO1sZJ4UDnvu2pFu7-UiluslFnOmCrN7ALfPhAAsp1VhJb-T5nYr8O8wDf6khrryELhAmS5TdQt4UuC1vuYjmrkOI_StrDh2MFLHvZPKqRFZqgrJiBx-8xsP5rxYlMLnhsd5LNHz1iCnKy-e3TAIxN2-H4M5Bzb8odnOXUZFnRFxC8lmrswFPNJYlvlfLL3l2ZQcRiZYRq0z_3qUDM",
-    alt: "Instrumentalists",
-    badgeText: "1d left",
-    badgeVariant: "urgent",
-  },
-];
-
 export default function PhotosGalleryPage(): ReactElement {
   const [showBanner, setShowBanner] = useState(true);
   const [activeFilter, setActiveFilter] = useState<"all" | "today" | "thanksgiving" | "choir">(
@@ -135,13 +47,43 @@ export default function PhotosGalleryPage(): ReactElement {
   const [previewPhoto, setPreviewPhoto] = useState<GalleryPhotoItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  useQuery(SERVICE_PHOTOS_QUERY, {
+  const { data } = useQuery(SERVICE_PHOTOS_QUERY, {
     variables: { albumKey: activeFilter },
+    fetchPolicy: "network-only",
   });
 
-  const filteredPhotos = DEFAULT_GALLERY_ITEMS.filter(
+  const allPhotos: GalleryPhotoItem[] = (
+    (data?.servicePhotos as Array<{
+      id: string;
+      title: string;
+      albumKey: "today" | "thanksgiving" | "choir";
+      imageUrl: string;
+      daysLeftLabel: string;
+      daysLeftCount: number;
+    }>) ?? []
+  ).map((p) => ({
+    id: p.id,
+    title: p.title,
+    albumKey: p.albumKey,
+    imageUrl: p.imageUrl,
+    alt: p.title,
+    badgeText: p.daysLeftLabel,
+    badgeVariant:
+      p.daysLeftLabel === "Today" || p.daysLeftCount >= 7
+        ? "today"
+        : p.daysLeftCount <= 1
+          ? "urgent"
+          : p.daysLeftCount <= 3
+            ? "amber"
+            : "neutral",
+  }));
+
+  const filteredPhotos = allPhotos.filter(
     (item) => activeFilter === "all" || item.albumKey === activeFilter,
   );
+  const todayCount = allPhotos.filter((p) => p.albumKey === "today").length;
+  const thanksgivingCount = allPhotos.filter((p) => p.albumKey === "thanksgiving").length;
+  const choirCount = allPhotos.filter((p) => p.albumKey === "choir").length;
 
   function triggerToast(msg: string): void {
     setToastMessage(msg);
@@ -187,13 +129,13 @@ export default function PhotosGalleryPage(): ReactElement {
         <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <img
-              alt="ChurchConnect Brand Logo"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
               className="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              src="/rccg-logo.png"
             />
             <div className="flex flex-col">
               <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">
-                ChurchConnect
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
               <span className="font-headline-sm text-headline-sm text-on-surface leading-tight">
                 Photos
@@ -215,7 +157,7 @@ export default function PhotosGalleryPage(): ReactElement {
               <img
                 alt="Profile"
                 className="w-8 h-8 rounded-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                src={(data?.me?.avatarUrl as string | undefined) || "/rccg-logo.png"}
               />
             </Link>
           </div>
@@ -301,7 +243,7 @@ export default function PhotosGalleryPage(): ReactElement {
             >
               <span>All Photos</span>
               <span className="bg-on-primary/20 text-on-primary text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                42
+                {allPhotos.length}
               </span>
             </button>
 
@@ -315,8 +257,10 @@ export default function PhotosGalleryPage(): ReactElement {
               type="button"
             >
               <span className="w-2 h-2 rounded-full bg-secondary" />
-              <span>Sunday 17 Nov</span>
-              <span className="font-label-sm text-label-sm opacity-75">(18) · 7d left</span>
+              <span>Sunday Service</span>
+              <span className="font-label-sm text-label-sm opacity-75">
+                ({todayCount}) · 7d left
+              </span>
             </button>
 
             <button
@@ -329,7 +273,9 @@ export default function PhotosGalleryPage(): ReactElement {
               type="button"
             >
               <span>Thanksgiving Service</span>
-              <span className="font-label-sm text-label-sm opacity-75">(14) · 3d left</span>
+              <span className="font-label-sm text-label-sm opacity-75">
+                ({thanksgivingCount}) · 3d left
+              </span>
             </button>
 
             <button
@@ -342,7 +288,9 @@ export default function PhotosGalleryPage(): ReactElement {
               type="button"
             >
               <span>Choir Concert</span>
-              <span className="font-label-sm text-label-sm opacity-75">(10) · 1d left</span>
+              <span className="font-label-sm text-label-sm opacity-75">
+                ({choirCount}) · 1d left
+              </span>
             </button>
           </div>
 

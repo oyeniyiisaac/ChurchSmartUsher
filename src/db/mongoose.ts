@@ -11,9 +11,18 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     return mongoose;
   }
 
+  const env = getEnv();
+  const isTest = env.NODE_ENV === "test";
+
+  // During unit tests, avoid connecting to remote MongoDB Atlas unless explicitly overridden
+  const uri =
+    isTest && env.MONGODB_URI.startsWith("mongodb+srv://")
+      ? "mongodb://127.0.0.1:27017/church-attendance-test"
+      : env.MONGODB_URI;
+
   try {
-    globalForMongoose.mongooseConnection ??= mongoose.connect(getEnv().MONGODB_URI, {
-      serverSelectionTimeoutMS: 300,
+    globalForMongoose.mongooseConnection ??= mongoose.connect(uri, {
+      serverSelectionTimeoutMS: isTest ? 300 : 10000,
     });
     await globalForMongoose.mongooseConnection;
     return mongoose;

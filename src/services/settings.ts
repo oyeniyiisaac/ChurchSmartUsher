@@ -30,8 +30,8 @@ export interface GeofenceCheckResult {
 }
 
 const DEFAULT_PARISH_SETTINGS: ParishSettingsRecord = {
-  parishName: "Grace Sanctuary Parish",
-  denomination: "Redeemed Christian Church of God (RCCG)",
+  parishName: "RCCG JESUS HOUSE, OGBOMOSHO",
+  denomination: "The Redeemed Christian Church of God (RCCG)",
   foyerDesks: ["Door A (Main Entrance)", "Door B (Gallery Ramp)", "Foyer Desk #1 (Guest Lounge)"],
   qrRotationSeconds: 45,
   geofenceEnabled: true,
@@ -40,7 +40,7 @@ const DEFAULT_PARISH_SETTINGS: ParishSettingsRecord = {
   sanctuaryLongitude: 3.3792,
   duplicateScanDefense: true,
   childMinorShieldEnabled: true,
-  compressionProfile: "Lagos Mobile Mesh: WebP Lossy (85% Quality)",
+  compressionProfile: "Cloudinary Auto WebP (85% Quality)",
   updatedAt: new Date("2026-11-17T03:00:00.000Z").toISOString(),
 };
 

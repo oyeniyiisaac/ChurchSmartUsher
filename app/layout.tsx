@@ -13,18 +13,18 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ChurchConnect — Grace Sanctuary Parish",
+  title: "RCCG JESUS HOUSE, OGBOMOSHO",
   description:
-    "Warm Sanctuary Digital Experience — Church attendance, consistency streaks, and member fellowship portal",
+    "RCCG JESUS HOUSE, OGBOMOSHO — Church attendance, consistency streaks, and member fellowship portal",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ChurchConnect",
+    title: "RCCG JESUS HOUSE, OGBOMOSHO",
   },
   icons: {
-    icon: "/icon-192.svg",
-    apple: "/icon-192.svg",
+    icon: "/rccg-logo.png",
+    apple: "/rccg-logo.png",
   },
 };
 

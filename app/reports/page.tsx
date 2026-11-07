@@ -6,6 +6,11 @@ import { useMemo, useState, type ReactNode } from "react";
 
 const REPORTS_ARCHIVE_QUERY = gql`
   query AttendanceReportsPage {
+    me {
+      id
+      fullName
+      role
+    }
     attendanceReports {
       totalRecordedQ4
       avgSundayTurnout
@@ -52,84 +57,6 @@ interface ArchiveRowItem {
   isPeak: boolean;
 }
 
-const DEFAULT_ARCHIVE_ROWS: ArchiveRowItem[] = [
-  {
-    id: "arch-1",
-    name: "Sunday Thanksgiving Service",
-    dateLabel: "17 Nov 2024 • 08:30 AM",
-    serviceTypeLabel: "Sunday First",
-    attendanceCount: 312,
-    memberVsGuestLabel: "284 Mbr / 28 Gst",
-    memberRatioPercent: 91,
-    capacityPercent: 87,
-    scanVsManualLabel: "298 Scan / 14 Man",
-    usherName: "Bro. Emmanuel Kalu",
-    usherInitials: "EK",
-    statusLabel: "Completed",
-    isPeak: false,
-  },
-  {
-    id: "arch-2",
-    name: "Special Thanksgiving Service",
-    dateLabel: "10 Nov 2024 • 08:30 AM",
-    serviceTypeLabel: "Sunday First",
-    attendanceCount: 326,
-    memberVsGuestLabel: "296 Mbr / 30 Gst",
-    memberRatioPercent: 90.8,
-    capacityPercent: 91,
-    scanVsManualLabel: "310 Scan / 16 Man",
-    usherName: "Sis. Chioma Nwosu",
-    usherInitials: "CN",
-    statusLabel: "Completed",
-    isPeak: true,
-  },
-  {
-    id: "arch-3",
-    name: "Midweek Faith Clinic",
-    dateLabel: "06 Nov 2024 • 06:00 PM",
-    serviceTypeLabel: "Midweek",
-    attendanceCount: 142,
-    memberVsGuestLabel: "138 Mbr / 4 Gst",
-    memberRatioPercent: 97,
-    capacityPercent: 40,
-    scanVsManualLabel: "130 Scan / 12 Man",
-    usherName: "Bro. Chuka Eze",
-    usherInitials: "CE",
-    statusLabel: "Completed",
-    isPeak: false,
-  },
-  {
-    id: "arch-4",
-    name: "Sunday Worship Service",
-    dateLabel: "03 Nov 2024 • 08:30 AM",
-    serviceTypeLabel: "Sunday First",
-    attendanceCount: 298,
-    memberVsGuestLabel: "275 Mbr / 23 Gst",
-    memberRatioPercent: 92,
-    capacityPercent: 83,
-    scanVsManualLabel: "282 Scan / 16 Man",
-    usherName: "Bro. Emmanuel Kalu",
-    usherInitials: "EK",
-    statusLabel: "Completed",
-    isPeak: false,
-  },
-  {
-    id: "arch-5",
-    name: "Night of Wonders Vigil",
-    dateLabel: "25 Oct 2024 • 10:00 PM",
-    serviceTypeLabel: "Special Vigil",
-    attendanceCount: 345,
-    memberVsGuestLabel: "305 Mbr / 40 Gst",
-    memberRatioPercent: 88.4,
-    capacityPercent: 96,
-    scanVsManualLabel: "320 Scan / 25 Man",
-    usherName: "Elder Babatunde",
-    usherInitials: "EB",
-    statusLabel: "Completed",
-    isPeak: false,
-  },
-];
-
 export default function AttendanceReportsPage(): ReactNode {
   const { data } = useQuery(REPORTS_ARCHIVE_QUERY, {
     fetchPolicy: "network-only",
@@ -141,7 +68,14 @@ export default function AttendanceReportsPage(): ReactNode {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const archiveRows: ArchiveRowItem[] =
-    (data?.attendanceReports?.archiveRows as ArchiveRowItem[] | undefined) ?? DEFAULT_ARCHIVE_ROWS;
+    (data?.attendanceReports?.archiveRows as ArchiveRowItem[] | undefined) ?? [];
+
+  const totalRecorded = (data?.attendanceReports?.totalRecordedQ4 as number | undefined) ?? 0;
+  const avgSundayTurnout = (data?.attendanceReports?.avgSundayTurnout as number | undefined) ?? 0;
+  const digitalScanPercent =
+    (data?.attendanceReports?.digitalScanPercent as number | undefined) ?? 0;
+  const visitorRetentionPercent =
+    (data?.attendanceReports?.visitorRetentionPercent as number | undefined) ?? 0;
 
   const filteredRows = useMemo(() => {
     return archiveRows.filter((row) => {
@@ -210,15 +144,19 @@ export default function AttendanceReportsPage(): ReactNode {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-on-primary text-[22px]">church</span>
+            <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src="/rccg-logo.png"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight truncate">
-                ChurchConnect
+                RCCG JESUS HOUSE
               </span>
               <span className="font-label-sm text-label-sm text-secondary truncate">
-                Grace Sanctuary Parish - Lagos
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
           </div>
@@ -341,10 +279,10 @@ export default function AttendanceReportsPage(): ReactNode {
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="font-label-md text-label-md text-on-surface leading-tight">
-                  Pastor Emmanuel
+                  {data?.me?.fullName ?? "Parish Administrator"}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight">
-                  Admin Lead
+                  {data?.me?.role ?? "Admin Lead"}
                 </span>
               </div>
             </div>
@@ -359,7 +297,7 @@ export default function AttendanceReportsPage(): ReactNode {
                 <div className="flex flex-col gap-space-xs max-w-2xl">
                   <div className="flex items-center gap-space-sm">
                     <span className="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-                      Audit Protocol 2024
+                      Audit Protocol
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
                     <span className="font-label-sm text-label-sm text-secondary font-semibold">
@@ -371,7 +309,7 @@ export default function AttendanceReportsPage(): ReactNode {
                   </h1>
                   <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
                     Historical service attendance records, dynamic check-in channel audits, and
-                    demographic trends across Grace Sanctuary Parish Lagos.
+                    demographic trends across RCCG JESUS HOUSE, OGBOMOSHO.
                   </p>
                 </div>
 
@@ -464,7 +402,7 @@ export default function AttendanceReportsPage(): ReactNode {
                         Total Recorded (Q4)
                       </span>
                       <span className="font-display-lg text-display-lg text-primary font-bold mt-1">
-                        3,842
+                        {totalRecorded}
                       </span>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0">
@@ -476,10 +414,10 @@ export default function AttendanceReportsPage(): ReactNode {
                   <div className="mt-space-md pt-space-sm flex items-center justify-between">
                     <span className="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-semibold">
                       <span className="material-symbols-outlined text-[14px]">trending_up</span>{" "}
-                      +8.4%
+                      Live DB
                     </span>
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      vs Q3 Total (3,544)
+                      {archiveRows.length} Services Recorded
                     </span>
                   </div>
                 </div>
@@ -492,7 +430,7 @@ export default function AttendanceReportsPage(): ReactNode {
                         Avg Sunday Turnout
                       </span>
                       <span className="font-display-lg text-display-lg text-on-surface font-bold mt-1">
-                        318
+                        {avgSundayTurnout}
                       </span>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center shrink-0">
@@ -504,12 +442,16 @@ export default function AttendanceReportsPage(): ReactNode {
                   <div className="mt-space-md pt-space-sm flex flex-col gap-1.5">
                     <div className="flex justify-between items-center font-label-sm text-label-sm">
                       <span className="text-on-surface-variant">Capacity Utilized</span>
-                      <span className="font-semibold text-secondary">88.3% of 360 Seats</span>
+                      <span className="font-semibold text-secondary">
+                        {Math.min(100, Math.round((avgSundayTurnout / 360) * 100))}% of 360 Seats
+                      </span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
                       <div
                         className="h-full bg-secondary-container rounded-full"
-                        style={{ width: "88.3%" }}
+                        style={{
+                          width: `${Math.min(100, Math.round((avgSundayTurnout / 360) * 100))}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -523,7 +465,7 @@ export default function AttendanceReportsPage(): ReactNode {
                         Digital Scan Adoption
                       </span>
                       <span className="font-display-lg text-display-lg text-tertiary font-bold mt-1">
-                        94.2%
+                        {digitalScanPercent}%
                       </span>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-tertiary-fixed flex items-center justify-center shrink-0">
@@ -534,7 +476,7 @@ export default function AttendanceReportsPage(): ReactNode {
                   </div>
                   <div className="mt-space-md pt-space-sm flex items-center justify-between">
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      Self-Scan vs 5.8% Desk
+                      Self-Scan vs Desk
                     </span>
                     <span className="inline-flex items-center gap-1 font-label-sm text-label-sm text-tertiary font-semibold">
                       <span className="material-symbols-outlined text-[16px]">bolt</span> Ultra Fast
@@ -550,7 +492,7 @@ export default function AttendanceReportsPage(): ReactNode {
                         Visitor Retention
                       </span>
                       <span className="font-display-lg text-display-lg text-primary font-bold mt-1">
-                        62%
+                        {visitorRetentionPercent}%
                       </span>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center shrink-0">
@@ -564,7 +506,7 @@ export default function AttendanceReportsPage(): ReactNode {
                       Within 3 service cycles
                     </span>
                     <span className="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-medium">
-                      138 Converts
+                      Live DB
                     </span>
                   </div>
                 </div>

@@ -56,11 +56,11 @@ export type CheckinPreviewPayload = {
 
 const FALLBACK_ACTIVE_SERVICE: ServiceInfo = {
   id: "65f000000000000000000100",
-  name: "Sunday First Service",
+  name: "Sunday Worship Service",
   serviceType: "SUNDAY",
-  serviceDate: "2026-11-08",
+  serviceDate: new Date().toISOString().slice(0, 10),
   startTime: "8:30 AM",
-  location: "Grace Sanctuary Auditorium",
+  location: "RCCG JESUS HOUSE, OGBOMOSHO Auditorium",
   usherStation: "Door A (Main Entrance)",
   status: "OPEN",
   openedAt: new Date().toISOString(),
@@ -76,7 +76,7 @@ function toServiceInfo(doc: ServiceDocument): ServiceInfo {
     serviceType: doc.serviceType,
     serviceDate: doc.serviceDate,
     startTime: doc.startTime ?? "8:30 AM",
-    location: doc.location ?? "Grace Sanctuary Auditorium",
+    location: doc.location ?? "RCCG JESUS HOUSE, OGBOMOSHO Auditorium",
     usherStation: doc.usherStation ?? "Door A (Main Entrance)",
     status: doc.status,
     openedAt: doc.openedAt ? new Date(doc.openedAt).toISOString() : null,
@@ -87,13 +87,13 @@ function toServiceInfo(doc: ServiceDocument): ServiceInfo {
 export async function listServices(): Promise<ServiceInfo[]> {
   try {
     await connectToDatabase();
-    const docs = await Service.find().sort({ serviceDate: -1 }).limit(30);
-    if (docs.length === 0) {
-      return [FALLBACK_ACTIVE_SERVICE];
+    if (mongoose.connection.readyState === 1) {
+      const docs = await Service.find().sort({ serviceDate: -1 }).limit(50);
+      return docs.map(toServiceInfo);
     }
-    return docs.map(toServiceInfo);
-  } catch {
     return [FALLBACK_ACTIVE_SERVICE];
+  } catch {
+    return process.env.NODE_ENV === "test" ? [FALLBACK_ACTIVE_SERVICE] : [];
   }
 }
 

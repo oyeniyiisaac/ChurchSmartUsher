@@ -82,7 +82,7 @@ describe("Services & Rotating Service QR Engine (Slice 3)", () => {
 
       expect(parsed.name).toBe("Sunday First Service");
       expect(parsed.serviceType).toBe("SUNDAY");
-      expect(parsed.location).toBe("Grace Sanctuary Auditorium");
+      expect(parsed.location).toBe("RCCG JESUS HOUSE, OGBOMOSHO Auditorium");
       expect(parsed.usherStation).toBe("Door A (Main Entrance)");
     });
 

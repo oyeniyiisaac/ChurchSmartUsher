@@ -1,6 +1,6 @@
 "use client";
 
-import { gql, useMutation } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -35,6 +35,16 @@ const REGISTER_MUTATION = gql`
   }
 `;
 
+const PUBLIC_DEPARTMENTS_QUERY = gql`
+  query PublicDepartments {
+    departments {
+      id
+      name
+      icon
+    }
+  }
+`;
+
 export interface AuthFormProps {
   mode: "login" | "register";
 }
@@ -60,14 +70,13 @@ interface AuthMutationData {
   };
 }
 
-const DEPARTMENTS = [
-  { label: "Sanctuary Choir", icon: "music_note" },
-  { label: "Ushering & Protocol", icon: "groups" },
-  { label: "Media & Sound", icon: "videocam" },
-  { label: "Youth Fellowship", icon: "volunteer_activism" },
-  { label: "Sunday School", icon: "menu_book" },
-  { label: "No Department / General Member", icon: "favorite" },
-] as const;
+interface PublicDepartmentsData {
+  departments: Array<{
+    id: string;
+    name: string;
+    icon: string;
+  }>;
+}
 
 export function AuthForm({ mode }: AuthFormProps): ReactNode {
   const router = useRouter();
@@ -81,15 +90,24 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [gender, setGender] = useState<"Male" | "Female">("Male");
-  const [department, setDepartment] = useState<string>("Sanctuary Choir");
+  const [department, setDepartment] = useState<string>("General Member");
   const [consentGiven, setConsentGiven] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const { data: deptData } = useQuery<PublicDepartmentsData>(PUBLIC_DEPARTMENTS_QUERY);
   const [loginMutation, { loading: loginLoading }] = useMutation<AuthMutationData>(LOGIN_MUTATION);
   const [registerMutation, { loading: registerLoading }] =
     useMutation<AuthMutationData>(REGISTER_MUTATION);
 
   const isLoading = loginLoading || registerLoading;
+
+  const departmentChoices =
+    deptData?.departments && deptData.departments.length > 0
+      ? [
+          ...deptData.departments.map((d) => ({ label: d.name, icon: d.icon || "groups" })),
+          { label: "General Member", icon: "favorite" },
+        ]
+      : [{ label: "General Member", icon: "favorite" }];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -142,13 +160,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
     }
   }
 
-  function fillSeedCredentials(seedPhone: string): void {
-    setLoginMethod("password");
-    setPhone(seedPhone);
-    setPassword("ChangeMe123!");
-    setErrorMessage(null);
-  }
-
   const switchQuery = returnToParam ? `?returnTo=${encodeURIComponent(returnToParam)}` : "";
 
   if (mode === "register") {
@@ -170,16 +181,16 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
           </div>
 
           <div className="flex items-center gap-space-md mb-space-lg bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
-            <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 bg-surface-container">
+            <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 bg-surface-container-lowest p-1 border border-outline-variant/20">
               <img
-                className="w-full h-full object-cover"
-                alt="Warm portrait of a welcoming church member"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLguqvF0DLU1mRRub7L8K1kXeummankdtrDkgii-ndPmhkp4Qzdtx4M7wC5KXl0n81MpKgKksY3vFTqpqj-VCH7mk-tNJaUtrg2UCDQQaSvEA7X2iO9ZGO_QA2zczlGVXj6WNBPhDfoG1L8d-1KuPo_TvoOjSD_mbgkbyi41Efm6ph3gGchN3YdShyPv7j2nofJglPUl4QDyy2aBkLXFpgOqbNNuXSf3ImhXW3deE"
+                className="w-full h-full object-contain"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO Logo"
+                src="/rccg-logo.png"
               />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight">
-                Join ChurchConnect
+                RCCG JESUS HOUSE, OGBOMOSHO
               </h1>
               <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
                 Register your digital member profile in under 2 minutes.
@@ -227,7 +238,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 <input
                   className="w-full h-[52px] pl-11 pr-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
                   id="fullName"
-                  placeholder="Isaac Olumide Adeleke"
+                  placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
@@ -251,7 +262,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 <input
                   className="w-full h-[52px] pl-11 pr-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
                   id="phoneNumber"
-                  placeholder="+234 803 456 7890"
+                  placeholder="+234 803 000 0000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
@@ -280,7 +291,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 <input
                   className="w-full h-[52px] pl-11 pr-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
                   id="emailAddress"
-                  placeholder="isaac.adeleke@gmail.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
@@ -353,7 +364,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 </span>
               </div>
               <div className="flex flex-wrap gap-2" id="dept-pills">
-                {DEPARTMENTS.map((dept) => {
+                {departmentChoices.map((dept) => {
                   const isSelected = department === dept.label;
                   return (
                     <button
@@ -389,8 +400,8 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 className="font-body-sm text-body-sm text-on-surface cursor-pointer leading-snug"
                 htmlFor="ndpaConsent"
               >
-                I consent to ChurchConnect storing my profile and attendance records for church
-                fellowship and ministry administration in compliance with NDPA 2023.
+                I consent to RCCG JESUS HOUSE, OGBOMOSHO storing my profile and attendance records
+                for church fellowship and ministry administration in compliance with NDPA 2023.
               </label>
             </div>
 
@@ -419,7 +430,9 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
           <div className="mt-space-lg flex items-center justify-center gap-2 text-on-surface-variant">
             <span className="material-symbols-outlined text-[18px]">verified_user</span>
-            <span className="font-label-sm text-label-sm">Secured Sanctuary Protocol System</span>
+            <span className="font-label-sm text-label-sm">
+              RCCG JESUS HOUSE, OGBOMOSHO · Secured Sanctuary System
+            </span>
           </div>
         </div>
       </main>
@@ -432,14 +445,13 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* Left Column on Desktop: Brand Welcome, Registration CTA & Parish Footer */}
           <div className="lg:col-span-5 flex flex-col">
-            {/* Subtle decorative ambient greeting banner */}
             <div className="relative w-full overflow-hidden rounded-xl bg-surface-container-low shadow-sm mb-space-lg p-space-md">
               <div className="flex items-center gap-space-md">
                 <div className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-surface-container-lowest shadow-sm flex items-center justify-center p-space-xs">
                   <img
-                    alt="ChurchConnect Brand Logo"
+                    alt="RCCG JESUS HOUSE, OGBOMOSHO Logo"
                     className="w-full h-full object-contain"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+                    src="/rccg-logo.png"
                   />
                 </div>
                 <div className="flex flex-col min-w-0">
@@ -450,13 +462,12 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                     </span>
                   </div>
                   <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate mt-1">
-                    ChurchConnect
+                    RCCG JESUS HOUSE, OGBOMOSHO
                   </h1>
                 </div>
               </div>
             </div>
 
-            {/* Welcome Statement */}
             <div className="flex flex-col mb-space-lg">
               <h2 className="font-headline-md text-headline-md text-on-surface">
                 Welcome to your church family portal
@@ -466,7 +477,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
               </p>
             </div>
 
-            {/* Registration Link Card (shown on left on desktop, below on mobile) */}
             <div className="hidden lg:flex w-full rounded-xl bg-secondary-fixed/30 p-space-md items-center justify-between shadow-sm mb-space-md gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shrink-0">
@@ -490,12 +500,11 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
               </Link>
             </div>
 
-            {/* Parish Sanctuary Footer Reassurance (Desktop) */}
             <div className="hidden lg:flex flex-col items-center justify-center text-center gap-1.5 p-space-md rounded-xl bg-surface-container-low">
               <div className="flex items-center gap-1.5 text-secondary">
                 <span className="material-symbols-outlined text-[18px]">location_on</span>
                 <span className="font-label-md text-label-md font-semibold">
-                  Grace Sanctuary Parish, Lagos
+                  RCCG JESUS HOUSE, OGBOMOSHO
                 </span>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
@@ -526,10 +535,8 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
               </div>
             )}
 
-            {/* Sign In Form Card */}
             <div className="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-lg mb-space-lg">
               <form className="flex flex-col gap-space-md" onSubmit={(e) => void handleSubmit(e)}>
-                {/* Method Selector: OTP vs Password */}
                 <div className="grid grid-cols-2 p-1 bg-surface-container rounded-lg">
                   <button
                     className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
@@ -559,7 +566,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   </button>
                 </div>
 
-                {/* Phone Number Field */}
                 <div className="flex flex-col gap-1.5">
                   <label
                     className="font-label-md text-label-md text-on-surface-variant"
@@ -568,7 +574,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                     Phone Number
                   </label>
                   <div className="flex items-center gap-2">
-                    {/* Country Code Picker */}
                     <div className="h-[52px] px-3 bg-surface-container-low rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface">
                       <span className="material-symbols-outlined text-[20px] text-primary">
                         flag
@@ -578,12 +583,11 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                         expand_more
                       </span>
                     </div>
-                    {/* Phone Number Input */}
                     <div className="relative flex-1">
                       <input
                         className="w-full h-[52px] px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
                         id="phone-input"
-                        placeholder="0803 123 4567"
+                        placeholder="0803 000 0000"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
@@ -593,7 +597,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   </div>
                 </div>
 
-                {/* Conditional Password Field */}
                 {loginMethod === "password" ? (
                   <div className="flex flex-col gap-1.5" id="password-container">
                     <div className="flex items-center justify-between">
@@ -643,7 +646,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   </div>
                 )}
 
-                {/* Primary Sign In Button */}
                 <button
                   className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-1 cursor-pointer disabled:opacity-60"
                   disabled={isLoading}
@@ -659,49 +661,8 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   </span>
                 </button>
               </form>
-
-              {/* Social / Secondary Divider */}
-              <div className="relative flex items-center justify-center my-space-lg">
-                <div className="w-full h-[1px] bg-surface-container" />
-                <span className="absolute px-3 bg-surface-container-lowest font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
-                  or continue with
-                </span>
-              </div>
-
-              {/* Alternative Sign-in / Seed Quick Fill Buttons */}
-              <div className="grid grid-cols-3 gap-space-xs">
-                <button
-                  className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  type="button"
-                  onClick={() => fillSeedCredentials("08000000003")}
-                >
-                  <span className="material-symbols-outlined text-primary text-[18px]">badge</span>
-                  <span>Member</span>
-                </button>
-                <button
-                  className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  type="button"
-                  onClick={() => fillSeedCredentials("08000000002")}
-                >
-                  <span className="material-symbols-outlined text-secondary text-[18px]">
-                    qr_code_scanner
-                  </span>
-                  <span>Usher</span>
-                </button>
-                <button
-                  className="h-12 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  type="button"
-                  onClick={() => fillSeedCredentials("08000000001")}
-                >
-                  <span className="material-symbols-outlined text-tertiary text-[18px]">
-                    admin_panel_settings
-                  </span>
-                  <span>Admin</span>
-                </button>
-              </div>
             </div>
 
-            {/* Registration Link Card (Mobile/Tablet) */}
             <div className="lg:hidden w-full rounded-xl bg-secondary-fixed/30 p-space-md flex items-center justify-between shadow-sm mb-space-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed shrink-0">
@@ -725,12 +686,11 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
               </Link>
             </div>
 
-            {/* Parish Sanctuary Footer Reassurance (Mobile/Tablet) */}
             <div className="lg:hidden flex flex-col items-center justify-center text-center gap-1.5 p-space-md rounded-xl bg-surface-container-low">
               <div className="flex items-center gap-1.5 text-secondary">
                 <span className="material-symbols-outlined text-[18px]">location_on</span>
                 <span className="font-label-md text-label-md font-semibold">
-                  Grace Sanctuary Parish, Lagos
+                  RCCG JESUS HOUSE, OGBOMOSHO
                 </span>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">

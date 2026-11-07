@@ -11,8 +11,42 @@ const ADMIN_OVERVIEW_QUERY = gql`
       fullName
       phone
       role
+      avatarUrl
     }
     adminOnlyCheck
+    members {
+      id
+      fullName
+      phone
+      role
+      status
+      department
+      memberCode
+      currentStreak
+      longestStreak
+      avatarUrl
+    }
+    departments {
+      id
+      name
+      memberCount
+    }
+    activeService {
+      id
+      name
+      serviceDate
+      startTime
+      location
+      status
+      totalPresent
+      capacity
+    }
+    attendanceReports {
+      totalRecordedQ4
+      avgSundayTurnout
+      digitalScanPercent
+      visitorRetentionPercent
+    }
   }
 `;
 
@@ -22,59 +56,105 @@ interface AdminOverviewData {
     fullName: string;
     phone: string;
     role: "MEMBER" | "USHER" | "ADMIN";
+    avatarUrl?: string | null;
   } | null;
   adminOnlyCheck: string;
+  members?: Array<{
+    id: string;
+    fullName: string;
+    phone: string;
+    role: string;
+    status: string;
+    department: string;
+    memberCode: string;
+    currentStreak: number;
+    longestStreak: number;
+    avatarUrl?: string | null;
+  }>;
+  departments?: Array<{
+    id: string;
+    name: string;
+    memberCount: number;
+  }>;
+  activeService?: {
+    id: string;
+    name: string;
+    serviceDate: string;
+    startTime: string;
+    location: string;
+    status: string;
+    totalPresent: number;
+    capacity: number;
+  } | null;
+  attendanceReports?: {
+    totalRecordedQ4: number;
+    avgSundayTurnout: number;
+    digitalScanPercent: number;
+    visitorRetentionPercent: number;
+  } | null;
 }
-
-const DEPARTMENTS_BREAKDOWN = [
-  { name: "Women of Grace", count: "88 / 95", pct: 93, bar: "bg-primary-container" },
-  { name: "Sanctuary Choir", count: "42 / 45", pct: 93, bar: "bg-primary" },
-  { name: "Ushering & Protocol", count: "28 / 30", pct: 93, bar: "bg-secondary" },
-  { name: "Sunday School Teachers", count: "22 / 24", pct: 92, bar: "bg-primary-container" },
-  { name: "Media & Technical", count: "16 / 18", pct: 89, bar: "bg-primary" },
-  { name: "Youth Fellowship", count: "74 / 85", pct: 87, bar: "bg-secondary-container" },
-  { name: "Men's Fellowship", count: "65 / 80", pct: 81, bar: "bg-outline" },
-] as const;
-
-const ROSTER_ROWS = [
-  {
-    initials: "IA",
-    avatarClass: "bg-primary text-on-primary",
-    name: "Isaac Adeleke",
-    code: "CC-2024-0104",
-    phone: "+234 802 334 1122",
-    dept: "Sanctuary Choir",
-    streak: "12 wks 🏆",
-    lastAttended: "Today, 8:42 AM",
-  },
-  {
-    initials: "CO",
-    avatarClass: "bg-secondary text-on-secondary",
-    name: "Chioma Okonkwo",
-    code: "CC-2024-0219",
-    phone: "+234 813 908 4455",
-    dept: "Ushering Lead",
-    streak: "7 wks 🔥",
-    lastAttended: "Today, 8:15 AM",
-  },
-  {
-    initials: "FA",
-    avatarClass: "bg-primary-fixed text-on-primary-fixed",
-    name: "Femi Awolowo",
-    code: "CC-2024-0390",
-    phone: "+234 701 556 7788",
-    dept: "Media & Sound",
-    streak: "9 wks 🔥",
-    lastAttended: "Today, 8:05 AM",
-  },
-] as const;
 
 export default function AdminPage(): ReactNode {
   const { data, error } = useQuery<AdminOverviewData>(ADMIN_OVERVIEW_QUERY, {
     fetchPolicy: "network-only",
   });
 
-  const adminName = data?.me?.fullName ?? "Pastor Emmanuel";
+  const adminName = data?.me?.fullName ?? "Parish Administrator";
+  const dbMembers = data?.members ?? [];
+  const dbDepartments = data?.departments ?? [];
+  const activeService = data?.activeService;
+  const reports = data?.attendanceReports;
+
+  const totalMembers = dbMembers.length;
+  const lastServiceAttendance = activeService?.totalPresent ?? 0;
+  const capacity = activeService?.capacity ?? 360;
+  const capacityPct =
+    capacity > 0 ? Math.min(100, Math.round((lastServiceAttendance / capacity) * 100)) : 0;
+  const avgAttendance = reports?.avgSundayTurnout ?? 0;
+  const firstTimeGuestsCount = dbMembers.filter((m) => m.status === "FIRST_TIME_GUEST").length;
+
+  const barColors = [
+    "bg-primary-container",
+    "bg-primary",
+    "bg-secondary",
+    "bg-primary-container",
+    "bg-primary",
+    "bg-secondary-container",
+    "bg-outline",
+  ];
+
+  const departmentsBreakdown = dbDepartments.map((d, idx) => ({
+    name: d.name,
+    count: `${d.memberCount} / ${Math.max(d.memberCount, totalMembers || 1)}`,
+    pct: totalMembers > 0 ? Math.min(100, Math.round((d.memberCount / totalMembers) * 100)) : 0,
+    bar: barColors[idx % barColors.length],
+  }));
+
+  const avatarStyles = [
+    "bg-primary text-on-primary",
+    "bg-secondary text-on-secondary",
+    "bg-primary-fixed text-on-primary-fixed",
+  ];
+
+  const rosterRows = dbMembers.slice(0, 10).map((m, idx) => {
+    const initials = m.fullName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? "")
+      .join("");
+    return {
+      initials: initials || "MB",
+      avatarClass: avatarStyles[idx % avatarStyles.length],
+      avatarUrl: m.avatarUrl,
+      name: m.fullName,
+      code: m.memberCode,
+      phone: m.phone,
+      dept: m.department || "General Congregation",
+      streak: `${m.currentStreak} wks 🔥`,
+      lastAttended: activeService ? `${activeService.serviceDate}` : "Recorded in DB",
+    };
+  });
 
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface antialiased min-h-screen">
@@ -82,15 +162,19 @@ export default function AdminPage(): ReactNode {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-on-primary text-[22px]">church</span>
+            <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src="/rccg-logo.png"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight truncate">
-                ChurchConnect
+                RCCG JESUS HOUSE
               </span>
               <span className="font-label-sm text-label-sm text-secondary truncate">
-                Grace Sanctuary Parish - Lagos
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
           </div>
@@ -255,7 +339,9 @@ export default function AdminPage(): ReactNode {
                   <div className="inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-secondary-container animate-pulse" />
                     <span className="font-label-sm text-label-sm font-semibold">
-                      Sunday First Service · In Progress (Door A &amp; B Open)
+                      {activeService
+                        ? `${activeService.name} · ${activeService.status}`
+                        : "No Active Service Open"}
                     </span>
                   </div>
                 </div>
@@ -263,23 +349,27 @@ export default function AdminPage(): ReactNode {
                   <span className="material-symbols-outlined text-[18px] text-outline">
                     calendar_today
                   </span>
-                  <span>Sunday · 10:15 AM (Africa/Lagos)</span>
+                  <span>
+                    {activeService
+                      ? `${activeService.serviceDate} · ${activeService.startTime}`
+                      : "Sunday · 08:00 AM (Africa/Lagos)"}
+                  </span>
                   <span className="text-outline">/</span>
                   <span className="text-secondary font-medium">
-                    Grace Sanctuary Parish · Main Auditorium
+                    RCCG JESUS HOUSE, OGBOMOSHO · {activeService?.location ?? "Main Sanctuary"}
                   </span>
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-space-sm">
-                <button
+                <Link
+                  href="/reports"
                   className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-surface-container-lowest text-on-surface shadow-sm hover:bg-surface-container-high transition-colors font-label-md text-label-md cursor-pointer"
-                  type="button"
                 >
                   <span className="material-symbols-outlined text-[20px] text-primary">
                     download
                   </span>
                   <span>Export Weekly Summary</span>
-                </button>
+                </Link>
                 <Link
                   href="/usher"
                   className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-secondary text-on-secondary shadow-sm hover:bg-on-secondary-container transition-colors font-label-md text-label-md"
@@ -287,13 +377,13 @@ export default function AdminPage(): ReactNode {
                   <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                   <span>Open Door Scanner</span>
                 </Link>
-                <button
+                <Link
+                  href="/services"
                   className="inline-flex items-center gap-space-xs px-space-md h-12 rounded-lg bg-primary text-on-primary shadow-md hover:bg-primary-container transition-colors font-label-md text-label-md cursor-pointer"
-                  type="button"
                 >
                   <span className="material-symbols-outlined text-[20px]">add_circle</span>
                   <span>+ New Service</span>
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -310,16 +400,16 @@ export default function AdminPage(): ReactNode {
                 </div>
                 <div className="flex items-baseline gap-space-sm">
                   <span className="font-display-lg text-display-lg text-primary tracking-tight">
-                    1,248
+                    {totalMembers}
                   </span>
                   <span className="font-label-sm text-label-sm text-tertiary-container bg-tertiary-fixed px-2 py-0.5 rounded-full inline-flex items-center gap-0.5">
-                    +18 this month
+                    Live DB
                   </span>
                 </div>
                 <div className="mt-space-sm flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
                   <span>Active Roster Ratio</span>
                   <span className="font-label-sm text-label-sm text-primary font-semibold">
-                    98.2% Active
+                    {totalMembers > 0 ? "100% Active" : "0% Active"}
                   </span>
                 </div>
               </div>
@@ -335,16 +425,16 @@ export default function AdminPage(): ReactNode {
                 </div>
                 <div className="flex items-baseline gap-space-sm">
                   <span className="font-display-lg text-display-lg text-primary tracking-tight">
-                    312
+                    {lastServiceAttendance}
                   </span>
                   <span className="font-label-sm text-label-sm text-secondary bg-secondary-fixed px-2 py-0.5 rounded-full inline-flex items-center gap-0.5">
-                    +12 vs prior
+                    Verified
                   </span>
                 </div>
                 <div className="mt-space-sm flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
                   <span>Sanctuary Capacity</span>
                   <span className="font-label-sm text-label-sm text-secondary font-semibold">
-                    87% Filled (360 cap)
+                    {capacityPct}% Filled ({capacity} cap)
                   </span>
                 </div>
               </div>
@@ -352,7 +442,7 @@ export default function AdminPage(): ReactNode {
               <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between relative overflow-hidden">
                 <div className="flex items-center justify-between mb-space-sm">
                   <span className="font-label-md text-label-md text-on-surface-variant">
-                    4-Week Average Attendance
+                    Average Attendance
                   </span>
                   <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-primary-container">
                     <span className="material-symbols-outlined text-[22px]">query_stats</span>
@@ -360,10 +450,10 @@ export default function AdminPage(): ReactNode {
                 </div>
                 <div className="flex items-baseline gap-space-sm">
                   <span className="font-display-lg text-display-lg text-primary tracking-tight">
-                    294
+                    {avgAttendance}
                   </span>
                   <span className="font-label-sm text-label-sm text-tertiary-container bg-tertiary-fixed px-2 py-0.5 rounded-full inline-flex items-center gap-0.5">
-                    +4.8% growth
+                    Live Metric
                   </span>
                 </div>
                 <div className="mt-space-sm flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
@@ -377,7 +467,7 @@ export default function AdminPage(): ReactNode {
               <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between relative overflow-hidden">
                 <div className="flex items-center justify-between mb-space-sm">
                   <span className="font-label-md text-label-md text-on-surface-variant">
-                    New Members This Month
+                    First-Time Guests
                   </span>
                   <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-secondary">
                     <span className="material-symbols-outlined text-[22px]">person_add</span>
@@ -385,16 +475,16 @@ export default function AdminPage(): ReactNode {
                 </div>
                 <div className="flex items-baseline gap-space-sm">
                   <span className="font-display-lg text-display-lg text-primary tracking-tight">
-                    34
+                    {firstTimeGuestsCount}
                   </span>
                   <span className="font-label-sm text-label-sm bg-tertiary-container text-on-tertiary px-2 py-0.5 rounded-full inline-flex items-center gap-0.5">
                     1st Time Guests
                   </span>
                 </div>
                 <div className="mt-space-sm flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
-                  <span>Believers Baptism</span>
+                  <span>Visitor Retention</span>
                   <span className="font-label-sm text-label-sm text-secondary font-semibold">
-                    +14% Conversion Rate
+                    {reports?.visitorRetentionPercent ?? 0}% Retention Rate
                   </span>
                 </div>
               </div>
@@ -498,10 +588,10 @@ export default function AdminPage(): ReactNode {
                   </svg>
                   <div className="absolute right-0 top-0 bg-primary text-on-primary px-3 py-1.5 rounded-lg shadow-md flex flex-col items-center pointer-events-none">
                     <span className="font-label-sm text-[11px] leading-tight text-primary-fixed">
-                      Nov 17 (Today)
+                      {activeService ? activeService.serviceDate : "Current Cycle"}
                     </span>
                     <span className="font-headline-sm text-headline-sm leading-tight">
-                      312 Attendees
+                      {lastServiceAttendance} Attendees
                     </span>
                   </div>
                 </div>
@@ -518,27 +608,35 @@ export default function AdminPage(): ReactNode {
                     </h3>
                   </div>
                   <span className="font-label-sm text-label-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant">
-                    7 Units Active
+                    {departmentsBreakdown.length} Units Active
                   </span>
                 </div>
                 <div className="flex flex-col gap-space-sm pt-2">
-                  {DEPARTMENTS_BREAKDOWN.map((dept) => (
-                    <div key={dept.name} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center font-label-sm text-label-sm">
-                        <span className="text-on-surface font-semibold">{dept.name}</span>
-                        <span className="text-primary font-bold">
-                          {dept.count}{" "}
-                          <span className="text-on-surface-variant font-normal">({dept.pct}%)</span>
-                        </span>
+                  {departmentsBreakdown.length === 0 ? (
+                    <p className="font-body-sm text-body-sm text-on-surface-variant py-6 text-center">
+                      No ministry departments created yet in MongoDB.
+                    </p>
+                  ) : (
+                    departmentsBreakdown.map((dept) => (
+                      <div key={dept.name} className="flex flex-col gap-1">
+                        <div className="flex justify-between items-center font-label-sm text-label-sm">
+                          <span className="text-on-surface font-semibold">{dept.name}</span>
+                          <span className="text-primary font-bold">
+                            {dept.count}{" "}
+                            <span className="text-on-surface-variant font-normal">
+                              ({dept.pct}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+                          <div
+                            className={`h-full ${dept.bar} rounded-full`}
+                            style={{ width: `${dept.pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-surface-container overflow-hidden">
-                        <div
-                          className={`h-full ${dept.bar} rounded-full`}
-                          style={{ width: `${dept.pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -570,50 +668,69 @@ export default function AdminPage(): ReactNode {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-container">
-                    {ROSTER_ROWS.map((row) => (
-                      <tr
-                        key={row.code}
-                        className="hover:bg-surface-container-low/50 transition-colors"
-                      >
-                        <td className="py-space-md px-space-md">
-                          <div className="flex items-center gap-space-sm">
-                            <div
-                              className={`w-10 h-10 rounded-full ${row.avatarClass} flex items-center justify-center font-bold text-sm`}
-                            >
-                              {row.initials}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-label-md text-label-md text-on-surface font-semibold">
-                                {row.name}
-                              </span>
-                              <span className="font-label-sm text-label-sm text-outline">
-                                {row.code}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-space-md px-space-md text-on-surface">{row.phone}</td>
-                        <td className="py-space-md px-space-md">
-                          <span className="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
-                            {row.dept}
-                          </span>
-                        </td>
-                        <td className="py-space-md px-space-md">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold font-label-sm text-label-sm">
-                            {row.streak}
-                          </span>
-                        </td>
-                        <td className="py-space-md px-space-md text-on-surface">
-                          {row.lastAttended}
-                        </td>
-                        <td className="py-space-md px-space-md">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-tertiary-container font-semibold font-label-sm text-label-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container" />
-                            Present Today
-                          </span>
+                    {rosterRows.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-space-lg px-space-md text-center text-on-surface-variant"
+                        >
+                          No member records registered in the database yet.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      rosterRows.map((row) => (
+                        <tr
+                          key={row.code}
+                          className="hover:bg-surface-container-low/50 transition-colors"
+                        >
+                          <td className="py-space-md px-space-md">
+                            <div className="flex items-center gap-space-sm">
+                              {row.avatarUrl ? (
+                                <img
+                                  src={row.avatarUrl}
+                                  alt={row.name}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div
+                                  className={`w-10 h-10 rounded-full ${row.avatarClass} flex items-center justify-center font-bold text-sm`}
+                                >
+                                  {row.initials}
+                                </div>
+                              )}
+                              <div className="flex flex-col">
+                                <span className="font-label-md text-label-md text-on-surface font-semibold">
+                                  {row.name}
+                                </span>
+                                <span className="font-label-sm text-label-sm text-outline">
+                                  {row.code}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-space-md px-space-md text-on-surface">{row.phone}</td>
+                          <td className="py-space-md px-space-md">
+                            <span className="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
+                              {row.dept}
+                            </span>
+                          </td>
+                          <td className="py-space-md px-space-md">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold font-label-sm text-label-sm">
+                              {row.streak}
+                            </span>
+                          </td>
+                          <td className="py-space-md px-space-md text-on-surface">
+                            {row.lastAttended}
+                          </td>
+                          <td className="py-space-md px-space-md">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-tertiary-container font-semibold font-label-sm text-label-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container" />
+                              Registered
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -2,10 +2,15 @@
 
 import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
-import { type ReactElement, useState } from "react";
+import { type ChangeEvent, type ReactElement, useEffect, useRef, useState } from "react";
 
 const ADMIN_PHOTO_HUB_QUERY = gql`
   query GetAdminPhotoHub($statusFilter: String, $tagFilter: String) {
+    me {
+      id
+      fullName
+      role
+    }
     adminPhotoHub(statusFilter: $statusFilter, tagFilter: $tagFilter) {
       totalCount
       publishedCount
@@ -29,6 +34,22 @@ const ADMIN_PHOTO_HUB_QUERY = gql`
         needsConsentCheck
         daysLeftLabel
       }
+    }
+  }
+`;
+
+const UPLOAD_PHOTO_MUTATION = gql`
+  mutation UploadServicePhoto($input: UploadPhotoInput!) {
+    uploadServicePhoto(input: $input) {
+      id
+      title
+      fileName
+      imageUrl
+      fileSizeLabel
+      tags
+      status
+      needsConsentCheck
+      daysLeftLabel
     }
   }
 `;
@@ -66,100 +87,6 @@ interface ModerationCardItem {
   approveLabel?: string;
 }
 
-const INITIAL_MODERATION_CARDS: ModerationCardItem[] = [
-  {
-    id: "photo-1",
-    fileName: "DSC_4901_Choir_Praise.jpg",
-    fileSizeLabel: "3.4 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDCarVRMg7xN7dbJJGCt_SZqWyg7GE1hmZX6BM8aKAMOaOJB8m2Fk3fi90UYBI1p3gbHyPNMTuIBVTYWbslPOINwNe2kc9X8vceZqNq7lMr_Epp0kaYLZz-gmasEZUbJci1arfyM9PjrYVMqSZlB46QoyFTyW1m7cin6ItuY4x8QVVmohVvtNNkwBWR6PS7Y9NFoJhaPcaDnu5DhWq6S007lIDr0Y_FmiEeRyMIqZg",
-    alt: "Nigerian church choir in golden and royal blue robes singing joyfully",
-    status: "PUBLISHED",
-    expiryText: "Expires in 6d",
-    tags: ["Sanctuary Choir", "Front Row"],
-  },
-  {
-    id: "photo-2",
-    fileName: "DSC_4905_Pastoral_Blessing.jpg",
-    fileSizeLabel: "4.1 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAf0gqkLStP9xRhuKYGsQVQx1zJ4QDvMTR6AAPk8X1UhuhMGxB_-ur32QJBYQWDtAJmVXLj88q1GcL7rB0s0vKBP509pk538QdK2-u6OjK6GA-q_I6UQPP2JxyNIqPm3Tl38V2m2xhfNpAmKtrp0lxlga9aqG08w3aOimxBQz-Pk7mutPnqNUhlJ8vUBFGVYeBMJiX9k9YT8LyxE_wWdSjaj_X6vosfTH3BDit1bUE",
-    alt: "Senior African Pastor in sharp navy suit offering benediction",
-    status: "PUBLISHED",
-    expiryText: "Expires in 6d",
-    tags: ["Pastoral", "Altar"],
-  },
-  {
-    id: "photo-4",
-    fileName: "DSC_4908_Auditorium_Prayer.jpg",
-    fileSizeLabel: "5.2 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuA2gZc-6Rw70-4gOYBVQWtRnXM-6p9Lgeh-mtEjUzsAs6pi53Nr_IJcyMeFgJa4SaahH31qNccexavUHTsmhui8gZDNyiuPzlAg1gKOBi3qEHzWrl6UQT1NBaU1SODabEZFcbMoSTlU5B25-x_GtZrs7AWO3Idy19xELM3Ke3JVzxrUzxxCnyoxkuHLOSj3FB01h8ghjgRYzmqAe0t30PfANIcc5Es9vttChCr9Fmk",
-    alt: "Wide respectful auditorium shot of diverse Nigerian church congregation",
-    status: "PUBLISHED",
-    expiryText: "Expires in 6d",
-    tags: ["Congregation", "Wide Angle"],
-  },
-  {
-    id: "photo-pending-1",
-    fileName: "DSC_4914_YouthAblaze_Trio.jpg",
-    fileSizeLabel: "3.9 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCsd48IQMbgoVlG75AgWKEdMq9UoE8SHqtl5t5GJEogJLVFmKv-K6A_o1hyzsDMvTsNVZ8imgM6Hmda_aVhFwLtyHWfOIEEnMooAl_U_z9IwCpuAbUGuXX6CQoCXxKSG7t4pabczsZfr4d6Y008txm7gcDEbvKB-keTQkey5prHuNfkGNVrxc8W6u06StpBQR3I8kjoB-kO1H1S3yok3mmAGNnX-BU_ieu4W-qsxcM",
-    alt: "Energetic youth worship team singing with acoustic guitars",
-    status: "PENDING",
-    expiryText: "Needs Consent Check (Minors in frame)",
-    tags: ["Youth Fellowship", "Parent Consent Pending"],
-    needsConsentCheck: true,
-    approveLabel: "Approve",
-  },
-  {
-    id: "photo-pending-2",
-    fileName: "DSC_4919_Dedication_Adeleke.jpg",
-    fileSizeLabel: "4.8 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuC4VY7yDyKFy9_SDTrJbnEaLdcsoB4CGlnLOx28yNsVuDLW3S9xrKnveO_6SOsvsJw3TzWyIYY8NEwrBxPJVWv6jktNdBK_LgrXZqG6Nzcvi9lbefJADKqFl_MtAXg-DJKjfF8zW5C5r8szfGejarvisW0W7ljpnrO91XbzRXKjIwPZAhlxqG_w7OWE8E2k4ZMjIyQnwYgKbUa32pPHQ0LDtQb0jk_yjDSqB78XSJA",
-    alt: "Proud young Nigerian couple holding newborn infant after baby dedication",
-    status: "PENDING",
-    expiryText: "High Res Ready (4.8 MB)",
-    tags: ["Family & Dedication", "Foyer Portrait"],
-    approveLabel: "Approve & Notify Family",
-  },
-  {
-    id: "photo-6",
-    fileName: "DSC_4922_Sanctuary_Table.jpg",
-    fileSizeLabel: "2.7 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuC2Yl3JEL8DGB1w21i8HGe2lLYjrxmqoVLU-pFDKnhIyozPa0dW6hXxnUruuuCxq00zeHPicL5g6BwnMzYvTxEK7pRULL1J6vI6RzJRiAxSytlTPgYvNoSQO60H7vNNOcm_9na1ewESECTELDFPrOqa7KgVlAq0yTweUflNqPWyUypijR5QWnKJXx6-hGsZ8-OP-9YbDQrLInCsyR9ZzWDAF89GMqVeIQyNqYCU0IE",
-    alt: "Dignified communion table arrangement in church altar",
-    status: "APPROVED",
-    expiryText: "Expires in 6d",
-    tags: ["Sanctuary Details", "Communion"],
-  },
-  {
-    id: "photo-3",
-    fileName: "DSC_4925_Protocol_Entrance.jpg",
-    fileSizeLabel: "3.1 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDf-G25FPUvsUi3JrwgzSpbZt_14G7b8x3AFN6bA8I8FLDnRDBxUUXplY1IW8rog0NSTpNX1BG78ttp8aZJTW5r155mOiA9CwIV297FS97NA00VJInGk6MfLqAECluLTyuBqI_2weNvWwYecOa8ZqylLJz8lQxTh9A_tKpZPqvXlKHKCw1SjrxPok_sCJcDjPxL97Zl0iPaf6GQ0JFsaYhw8mZMV7PlI4E5lELj8Zo",
-    alt: "Hospitable church usher in royal blue ceremonial sash warmly greeting guests",
-    status: "PUBLISHED",
-    expiryText: "Expires in 6d",
-    tags: ["Protocol & Ushers", "Door A"],
-  },
-  {
-    id: "photo-5",
-    fileName: "DSC_4928_HighPraise_Aisle.jpg",
-    fileSizeLabel: "4.4 MB",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuC1w1_MQ5ywvI-dkTiOw4fdmfoN-MXxUBulNnr5nV0RuFM7qGYW4udAJv1Xvgvt4ErhrJQ5C4M_8Tdoanc2Qet5pEL7OoZv8z9f4Lu915rPHuM2hVRYlVTcyQrq3ndrLuSXFjBM3rgvaOvk6ZRTT5w24TI6gcnIX4p1hZz2DaHWh-6veyoWvX31l-TWASCttcWiUpBslatAkoSWkFF9PM1ZstsXI3HHnJHojQ9jDDM",
-    alt: "Dynamic energetic African worship praise dancing in church aisle",
-    status: "PUBLISHED",
-    expiryText: "Expires in 6d",
-    tags: ["Praise & Worship", "Auditorium West"],
-  },
-];
-
 const TAG_FILTERS = [
   "All Tags",
   "Sanctuary Choir",
@@ -170,17 +97,96 @@ const TAG_FILTERS = [
 ];
 
 export default function AdminPhotoModerationHubPage(): ReactElement {
-  const [cards, setCards] = useState<ModerationCardItem[]>(INITIAL_MODERATION_CARDS);
+  const [cards, setCards] = useState<ModerationCardItem[]>([]);
   const [activeTab, setActiveTab] = useState<"ALL" | "PUBLISHED" | "PENDING" | "FLAGGED">("ALL");
   const [activeTag, setActiveTag] = useState("All Tags");
-  const [selectedIds, setSelectedIds] = useState<string[]>(["photo-pending-1", "photo-pending-2"]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useQuery(ADMIN_PHOTO_HUB_QUERY, {
+  const { data, refetch } = useQuery(ADMIN_PHOTO_HUB_QUERY, {
     variables: { statusFilter: activeTab, tagFilter: activeTag },
+    fetchPolicy: "network-only",
   });
+  const [uploadPhotoMutation] = useMutation(UPLOAD_PHOTO_MUTATION);
   const [moderateMutation] = useMutation(MODERATE_PHOTO_MUTATION);
   const [purgeMutation] = useMutation(PURGE_EXPIRED_PHOTOS_MUTATION);
+
+  useEffect(() => {
+    const rawPhotos = (data?.adminPhotoHub?.photos ?? []) as Array<{
+      id: string;
+      title: string;
+      fileName: string;
+      fileSizeLabel: string;
+      imageUrl: string;
+      status: string;
+      tags: string[];
+      needsConsentCheck: boolean;
+      daysLeftLabel: string;
+    }>;
+
+    setCards(
+      rawPhotos.map((p) => ({
+        id: p.id,
+        fileName: p.fileName || p.title,
+        fileSizeLabel: p.fileSizeLabel || "2.4 MB",
+        imageUrl: p.imageUrl,
+        alt: p.title,
+        status:
+          p.status === "PENDING" ? "PENDING" : p.status === "APPROVED" ? "APPROVED" : "PUBLISHED",
+        expiryText: p.daysLeftLabel || "Expires in 7d",
+        tags: p.tags?.length ? p.tags : ["Congregation"],
+        needsConsentCheck: p.needsConsentCheck,
+      })),
+    );
+  }, [data]);
+
+  async function handleFileSelect(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingFiles(true);
+    let uploadedCount = 0;
+
+    for (const file of Array.from(files)) {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+
+      try {
+        await uploadPhotoMutation({
+          variables: {
+            input: {
+              title: file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " "),
+              fileName: file.name,
+              albumKey: "sunday-service",
+              albumTitle: "RCCG JESUS HOUSE, OGBOMOSHO Service Roll",
+              photographer: data?.me?.fullName ?? "Media Team",
+              fileSizeBytes: file.size,
+              tags: ["Congregation"],
+              needsConsentCheck: false,
+              fileContentBase64: base64,
+            },
+          },
+        });
+        uploadedCount += 1;
+      } catch (err) {
+        showNotification(err instanceof Error ? err.message : "Failed to upload photo");
+      }
+    }
+
+    setUploadingFiles(false);
+    event.target.value = "";
+    if (uploadedCount > 0) {
+      await refetch();
+      showNotification(
+        `Uploaded ${uploadedCount} photo(s) to Cloudinary & saved to MongoDB gallery!`,
+      );
+    }
+  }
 
   function showNotification(msg: string): void {
     setStatusBanner(msg);
@@ -255,15 +261,19 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-on-primary text-[22px]">church</span>
+            <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src="/rccg-logo.png"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight truncate">
-                ChurchConnect
+                RCCG JESUS HOUSE
               </span>
               <span className="font-label-sm text-label-sm text-secondary truncate">
-                Grace Sanctuary Parish - Lagos
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
           </div>
@@ -388,10 +398,10 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="font-label-md text-label-md text-on-surface leading-tight">
-                  Pastor Emmanuel
+                  {data?.me?.fullName ?? "Parish Administrator"}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight">
-                  Admin Lead
+                  {data?.me?.role ?? "Admin Lead"}
                 </span>
               </div>
             </div>
@@ -431,7 +441,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                     chevron_right
                   </span>
                   <span className="text-on-surface-variant truncate max-w-[200px] md:max-w-none">
-                    Sunday Thanksgiving Service (17 Nov 2024)
+                    RCCG JESUS HOUSE, OGBOMOSHO Service Roll
                   </span>
                   <span className="material-symbols-outlined text-[14px] text-outline">
                     chevron_right
@@ -447,12 +457,13 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                       </h1>
                       <div className="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">
                         <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                        <span>Live Service Active • Auto-Expiry in 7 Days (NDPA Compliant)</span>
+                        <span>Cloudinary Active • Auto-Expiry in 7 Days (NDPA Compliant)</span>
                       </div>
                     </div>
                     <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      Upload, verify congregation photo consent, optimize media, and publish to the
-                      ChurchConnect member app before automatic Sunday purge.
+                      Upload to Cloudinary, verify congregation photo consent, optimize media, and
+                      publish to the RCCG JESUS HOUSE, OGBOMOSHO member app before automatic Sunday
+                      purge.
                     </p>
                   </div>
 
@@ -460,7 +471,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                   <div className="flex flex-wrap items-center gap-space-sm self-start xl:self-center shrink-0">
                     <button
                       className="h-10 px-space-md bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md flex items-center gap-1.5 transition-colors shadow-sm"
-                      onClick={handlePurgeNow}
+                      onClick={() => void handlePurgeNow()}
                       type="button"
                     >
                       <span className="material-symbols-outlined text-[18px] text-outline">
@@ -470,15 +481,13 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                     </button>
                     <button
                       className="h-10 px-space-md bg-surface-container-lowest hover:bg-surface-container text-primary rounded-lg font-label-md text-label-md flex items-center gap-1.5 transition-colors shadow-sm"
-                      onClick={() =>
-                        showNotification("New Service Album initialized with 7-day auto-expiry.")
-                      }
+                      onClick={() => fileInputRef.current?.click()}
                       type="button"
                     >
                       <span className="material-symbols-outlined text-[18px]">
                         add_photo_alternate
                       </span>
-                      <span>Create New Album</span>
+                      <span>{uploadingFiles ? "Uploading..." : "Upload Service Photos"}</span>
                     </button>
                     <button
                       className="h-10 px-space-lg bg-primary-container hover:bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all shadow-md active:scale-[0.99]"
@@ -491,13 +500,15 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                           })),
                         );
                         showNotification(
-                          "All pending photos published to the ChurchConnect member app!",
+                          "All pending photos published to the RCCG JESUS HOUSE, OGBOMOSHO member app!",
                         );
                       }}
                       type="button"
                     >
                       <span className="material-symbols-outlined text-[18px]">cloud_sync</span>
-                      <span>Publish Batch to Church App (24 pending)</span>
+                      <span>
+                        Publish Batch ({cards.filter((c) => c.status === "PENDING").length} pending)
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -516,14 +527,27 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                     </span>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span className="font-headline-md text-headline-md text-primary font-bold">
-                        24
+                        {cards.length}
                       </span>
                       <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">
-                        / 18 Published
+                        / {cards.filter((c) => c.status !== "PENDING").length} Published
                       </span>
                     </div>
                     <div className="w-full bg-surface-container h-1.5 rounded-full mt-2 overflow-hidden">
-                      <div className="bg-primary h-full rounded-full" style={{ width: "75%" }} />
+                      <div
+                        className="bg-primary h-full rounded-full"
+                        style={{
+                          width: `${
+                            cards.length > 0
+                              ? Math.round(
+                                  (cards.filter((c) => c.status !== "PENDING").length /
+                                    cards.length) *
+                                    100,
+                                )
+                              : 0
+                          }%`,
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -539,16 +563,16 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                     </span>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span className="font-headline-md text-headline-md text-secondary font-bold">
-                        142 MB
+                        {data?.adminPhotoHub?.storageUsedLabel ?? "0 MB"}
                       </span>
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        / 2.0 GB Limit
+                        / {data?.adminPhotoHub?.storageLimitLabel ?? "2.0 GB"} Limit
                       </span>
                     </div>
                     <div className="w-full bg-surface-container h-1.5 rounded-full mt-2 overflow-hidden">
                       <div
                         className="bg-secondary-container h-full rounded-full"
-                        style={{ width: "7.1%" }}
+                        style={{ width: "5%" }}
                       />
                     </div>
                   </div>
@@ -565,10 +589,10 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                     </span>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span className="font-headline-md text-headline-md text-on-surface font-bold">
-                        18 Approved
+                        {cards.filter((c) => c.status !== "PENDING").length} Approved
                       </span>
                       <span className="font-label-sm text-label-sm text-secondary font-semibold">
-                        6 Pending
+                        {cards.filter((c) => c.status === "PENDING").length} Pending
                       </span>
                     </div>
                     <span className="font-label-sm text-label-sm text-tertiary font-medium mt-1">
@@ -588,12 +612,11 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         Policy Purge
                       </span>
                       <span className="font-label-sm text-label-sm text-secondary font-bold">
-                        6d 14h left
+                        {data?.adminPhotoHub?.policyPurgeCountdown ?? "7d left"}
                       </span>
                     </div>
                     <p className="font-label-sm text-label-sm text-on-surface mt-1 leading-snug">
-                      Purges Sunday 24 Nov 23:59 WAT. Congregation auto-prompted to download
-                      memories.
+                      Auto-purges after 7 days. Congregation auto-prompted to download memories.
                     </p>
                   </div>
                 </div>
@@ -665,12 +688,25 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         Turbo Active
                       </span>
                     </div>
-                    <div className="relative group p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col items-center text-center cursor-pointer">
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="relative group p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col items-center text-center cursor-pointer"
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => void handleFileSelect(e)}
+                        className="hidden"
+                      />
                       <div className="w-16 h-16 rounded-full bg-surface-container-lowest group-hover:scale-110 shadow-sm flex items-center justify-center transition-transform text-primary mb-space-sm">
                         <span className="material-symbols-outlined text-[32px]">cloud_upload</span>
                       </div>
                       <p className="font-label-lg text-label-lg text-primary font-semibold">
-                        Drag &amp; drop RAW / JPEG photos
+                        {uploadingFiles
+                          ? "Uploading to Cloudinary..."
+                          : "Drag & drop RAW / JPEG photos"}
                       </p>
                       <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
                         or{" "}
@@ -679,7 +715,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         </span>
                       </p>
                       <p className="font-label-sm text-label-sm text-outline mt-2">
-                        JPEG, HEIC, PNG • Up to 25MB each
+                        JPEG, HEIC, PNG • Uploaded directly to Cloudinary
                       </p>
                       <div className="mt-space-md px-space-sm py-1.5 bg-surface-container-lowest rounded-lg flex items-center gap-2 max-w-full">
                         <span className="material-symbols-outlined text-secondary text-[16px]">

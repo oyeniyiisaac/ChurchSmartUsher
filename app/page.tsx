@@ -36,9 +36,9 @@ export default function HomePage(): ReactNode {
             <div className="flex items-center gap-space-md">
               <div className="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-surface-container-lowest shadow-sm flex items-center justify-center p-space-xs">
                 <img
-                  alt="ChurchConnect Brand Logo"
+                  alt="RCCG JESUS HOUSE, OGBOMOSHO Logo"
                   className="w-full h-full object-contain"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+                  src="/rccg-logo.png"
                 />
               </div>
               <div className="flex flex-col min-w-0">
@@ -49,7 +49,7 @@ export default function HomePage(): ReactNode {
                   </span>
                 </div>
                 <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight truncate mt-1">
-                  ChurchConnect
+                  RCCG JESUS HOUSE, OGBOMOSHO
                 </h1>
               </div>
             </div>
@@ -62,7 +62,7 @@ export default function HomePage(): ReactNode {
 
         <div className="flex flex-col mb-space-lg">
           <h2 className="font-headline-md text-headline-md text-on-surface">
-            Grace Sanctuary Parish · Digital Fellowship
+            RCCG JESUS HOUSE, OGBOMOSHO · Digital Fellowship
           </h2>
           <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs leading-relaxed">
             Scan the rotating service QR code at the sanctuary entrance, track your consistency
@@ -177,7 +177,7 @@ export default function HomePage(): ReactNode {
           <div className="flex items-center gap-1.5 text-secondary">
             <span className="material-symbols-outlined text-[18px]">location_on</span>
             <span className="font-label-md text-label-md font-semibold">
-              Grace Sanctuary Parish, Lagos
+              RCCG JESUS HOUSE, OGBOMOSHO
             </span>
           </div>
           <p className="font-body-sm text-body-sm text-on-surface-variant">

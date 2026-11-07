@@ -1,7 +1,26 @@
 "use client";
 
+import { gql, useQuery } from "@apollo/client";
 import Link from "next/link";
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
+
+const SETTINGS_PAGE_QUERY = gql`
+  query SettingsPageQuery {
+    me {
+      id
+      fullName
+      role
+    }
+    parishSettings {
+      parishName
+      denomination
+      qrRotationSeconds
+      geofenceEnabled
+      childMinorShieldEnabled
+      compressionProfile
+    }
+  }
+`;
 
 interface PermissionMatrixRow {
   capability: string;
@@ -88,16 +107,40 @@ const PERMISSION_ROWS: PermissionMatrixRow[] = [
 ];
 
 export default function SettingsPermissionsPage(): ReactElement {
+  const { data } = useQuery(SETTINGS_PAGE_QUERY, { fetchPolicy: "network-only" });
+
   const [rotationSeconds, setRotationSeconds] = useState(45);
   const [geofenceEnabled, setGeofenceEnabled] = useState(true);
   const [childShieldEnabled, setChildShieldEnabled] = useState(true);
-  const [parishName, setParishName] = useState("Grace Sanctuary Parish");
+  const [parishName, setParishName] = useState("RCCG JESUS HOUSE, OGBOMOSHO");
   const [denomination, setDenomination] = useState("Redeemed Christian Church of God (RCCG)");
   const [compressionProfile, setCompressionProfile] = useState(
     "Lagos Mobile Mesh: WebP Lossy (85% Quality)",
   );
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    const ps = data?.parishSettings as
+      | {
+          parishName?: string;
+          denomination?: string;
+          qrRotationSeconds?: number;
+          geofenceEnabled?: boolean;
+          childMinorShieldEnabled?: boolean;
+          compressionProfile?: string;
+        }
+      | undefined;
+    if (ps) {
+      if (ps.parishName) setParishName(ps.parishName);
+      if (ps.denomination) setDenomination(ps.denomination);
+      if (typeof ps.qrRotationSeconds === "number") setRotationSeconds(ps.qrRotationSeconds);
+      if (typeof ps.geofenceEnabled === "boolean") setGeofenceEnabled(ps.geofenceEnabled);
+      if (typeof ps.childMinorShieldEnabled === "boolean")
+        setChildShieldEnabled(ps.childMinorShieldEnabled);
+      if (ps.compressionProfile) setCompressionProfile(ps.compressionProfile);
+    }
+  }, [data]);
 
   async function handleSaveChanges(): Promise<void> {
     setSaveState("saving");
@@ -147,15 +190,19 @@ export default function SettingsPermissionsPage(): ReactElement {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-on-primary text-[22px]">church</span>
+            <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src="/rccg-logo.png"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight truncate">
-                ChurchConnect
+                RCCG JESUS HOUSE
               </span>
               <span className="font-label-sm text-label-sm text-secondary truncate">
-                Grace Sanctuary Parish - Lagos
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
           </div>
@@ -278,10 +325,10 @@ export default function SettingsPermissionsPage(): ReactElement {
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="font-label-md text-label-md text-on-surface leading-tight">
-                  Pastor Emmanuel
+                  {data?.me?.fullName ?? "Parish Administrator"}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight">
-                  Admin Lead
+                  {data?.me?.role ?? "Admin Lead"}
                 </span>
               </div>
             </div>
@@ -295,7 +342,7 @@ export default function SettingsPermissionsPage(): ReactElement {
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
                 <div className="flex flex-col gap-space-xs">
                   <nav className="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
-                    <span>Grace Sanctuary Parish</span>
+                    <span>RCCG JESUS HOUSE, OGBOMOSHO</span>
                     <span className="material-symbols-outlined text-[14px]">chevron_right</span>
                     <span>System Administration</span>
                     <span className="material-symbols-outlined text-[14px]">chevron_right</span>

@@ -75,7 +75,7 @@ describe("Slice 7 — Settings, Sanctuary Geofence, Role Matrix & PWA Manifest",
     };
 
     const initial = getParishSettings();
-    expect(initial.parishName).toBe("Grace Sanctuary Parish");
+    expect(initial.parishName).toBe("RCCG JESUS HOUSE, OGBOMOSHO");
     expect(initial.qrRotationSeconds).toBe(45);
     expect(initial.geofenceRadiusMeters).toBe(150);
 

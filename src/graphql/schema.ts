@@ -72,6 +72,7 @@ export const typeDefs = `#graphql
     phone: String!
     email: String
     gender: String
+    avatarUrl: String
     role: Role!
     status: String!
     department: String!
@@ -226,6 +227,8 @@ export const typeDefs = `#graphql
     phone: String
     email: String
     gender: String
+    avatarBase64: String
+    avatarUrl: String
     emergencyContact: String
     notes: String
   }
@@ -369,6 +372,7 @@ export const typeDefs = `#graphql
     ping: PingResult!
     me: Member
     myProfile: Member!
+    myAttendanceHistory: [AttendanceRecord!]!
     myStreak(serviceType: ServiceType): StreakSummary!
     departments: [Department!]!
     activities: [Activity!]!
@@ -393,6 +397,7 @@ export const typeDefs = `#graphql
     login(input: LoginInput!): AuthPayload!
     logout: Boolean!
     updateMyProfile(input: UpdateProfileInput!): Member!
+    updateMemberRole(memberId: ID!, role: Role!): Member!
     createDepartment(input: DepartmentInput!): Department!
     createActivity(input: ActivityInput!): Activity!
     assignMemberAffiliations(input: AssignAffiliationsInput!): Member!

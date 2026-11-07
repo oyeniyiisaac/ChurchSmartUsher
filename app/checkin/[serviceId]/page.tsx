@@ -13,6 +13,7 @@ const CHECKIN_PREVIEW_QUERY = gql`
       phone
       department
       currentStreak
+      avatarUrl
     }
     checkinPreview(serviceId: $serviceId, token: $token) {
       state
@@ -61,11 +62,16 @@ function CheckinPageContent(): ReactNode {
 
   const [markPresentMutation] = useMutation(MARK_PRESENT_MUTATION);
 
-  const memberName = (data?.me?.fullName as string | undefined) ?? "Isaac Adeleke";
+  const memberName = (data?.me?.fullName as string | undefined) ?? "Member";
+  const memberAvatar = (data?.me?.avatarUrl as string | undefined) || "/rccg-logo.png";
+  const memberDepartment =
+    (data?.me?.department as string | undefined) ?? "RCCG JESUS HOUSE, OGBOMOSHO";
+  const memberStreak = (data?.me?.currentStreak as number | undefined) ?? 0;
   const serviceName =
     (data?.checkinPreview?.service?.name as string | undefined) ?? "Sunday First Service";
   const serviceLocation =
-    (data?.checkinPreview?.service?.location as string | undefined) ?? "Grace Sanctuary Auditorium";
+    (data?.checkinPreview?.service?.location as string | undefined) ??
+    "RCCG JESUS HOUSE, OGBOMOSHO";
   const usherStation =
     (data?.checkinPreview?.service?.usherStation as string | undefined) ?? "Door A (Main Entrance)";
 
@@ -141,9 +147,9 @@ function CheckinPageContent(): ReactNode {
                 <span className="material-symbols-outlined text-[24px]">arrow_back</span>
               </button>
               <img
-                alt="ChurchConnect Brand Logo"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
                 className="h-7 w-auto object-contain"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+                src="/rccg-logo.png"
               />
               <h1 className="font-headline-sm text-headline-sm text-on-surface truncate">
                 Check In Success
@@ -161,7 +167,7 @@ function CheckinPageContent(): ReactNode {
                 <img
                   alt="Profile"
                   className="w-8 h-8 rounded-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                  src={memberAvatar}
                 />
               </Link>
             </div>
@@ -200,14 +206,14 @@ function CheckinPageContent(): ReactNode {
                   <img
                     className="w-11 h-11 rounded-full object-cover shadow-xs"
                     alt={memberName}
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMmoiLbdAWLNRDe3WxAk1MK5kKX9zeNWFInEBn9RAt-hdjOdQjc6i1KG_-UG0PUk9UCFXSILUw1Wu72Ku3W-SoCcHyMn17xCcNCvOg9wqW12Fo0NXtZ37nUUDP5jLRtVmWOFr0HuELHe3ZU1UeGxGA_9NQSi4Nm0BP0XFSyo_0l0CIxKuom8VIZpzDyZ8cVn_UcBfqo-DxCm42ENVNcFg-qbe-cdoEEGiqxzUC7Fo"
+                    src={memberAvatar}
                   />
                   <div className="min-w-0">
                     <p className="font-label-lg text-label-lg text-on-surface truncate">
                       {memberName}
                     </p>
                     <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                      Sanctuary Choir · Tenor
+                      {memberDepartment}
                     </p>
                   </div>
                 </div>
@@ -355,9 +361,9 @@ function CheckinPageContent(): ReactNode {
                 <span className="material-symbols-outlined text-[24px]">arrow_back</span>
               </button>
               <img
-                alt="ChurchConnect Brand Logo"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
                 className="h-7 w-auto object-contain"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+                src="/rccg-logo.png"
               />
               <h1 className="font-headline-sm text-headline-sm text-on-surface truncate">
                 Check In States
@@ -368,7 +374,7 @@ function CheckinPageContent(): ReactNode {
                 <img
                   alt="Profile"
                   className="w-8 h-8 rounded-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                  src={memberAvatar}
                 />
               </Link>
             </div>
@@ -464,14 +470,14 @@ function CheckinPageContent(): ReactNode {
                     <img
                       className="w-12 h-12 rounded-full object-cover"
                       alt={memberName}
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnVwYFNtY8TgvSNf7sUrNmFhSmqkGs9eK6A1LUtsSvZ9pohFCfHqqO8nCqDOu0WsMmOYmZqEzi-LSi2K3VW-jkYnckjJdOjOX_68474wdzlUsqVwgEtNkDc54tFwl4OkxukX0seOuRRjMIWIG1GC3sCZJRzltRPp-0bLJM-XTJFHrb7jhmNWwudvnhYg3nGvFwxq_8v7OQPc6BEeyIu86PcVVCMNe8Nd66QphAQPQ"
+                      src={memberAvatar}
                     />
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="font-label-lg text-label-lg text-on-surface truncate">
                         {memberName}
                       </span>
                       <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                        Sanctuary Choir • Seat Section B
+                        {memberDepartment}
                       </span>
                     </div>
                     <div className="flex flex-col items-end shrink-0">
@@ -678,9 +684,9 @@ function CheckinPageContent(): ReactNode {
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </Link>
             <img
-              alt="ChurchConnect Brand Logo"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
               className="h-7 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              src="/rccg-logo.png"
             />
             <h1 className="font-headline-sm text-headline-sm text-on-surface truncate">Check In</h1>
           </div>
@@ -693,11 +699,7 @@ function CheckinPageContent(): ReactNode {
               States
             </button>
             <Link href="/profile">
-              <img
-                alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
-              />
+              <img alt="Profile" className="w-8 h-8 rounded-full object-cover" src={memberAvatar} />
             </Link>
           </div>
         </div>
@@ -709,9 +711,9 @@ function CheckinPageContent(): ReactNode {
           <div className="flex flex-col items-center text-center mt-space-sm mb-space-md">
             <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-surface-container shadow-sm mb-space-sm">
               <img
-                alt="ChurchConnect Brand Logo"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
                 className="w-14 h-14 object-contain"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+                src="/rccg-logo.png"
               />
               <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shadow-sm">
                 <span className="material-symbols-outlined text-[14px]">church</span>
@@ -808,7 +810,7 @@ function CheckinPageContent(): ReactNode {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <p className="font-label-md text-label-md text-secondary font-bold">
-                    6-Week Faithful Streak
+                    {memberStreak}-Week Faithful Streak
                   </p>
                   <span className="text-[12px] bg-secondary-fixed text-on-secondary-fixed px-1.5 py-0.2 rounded-full font-label-sm">
                     Active

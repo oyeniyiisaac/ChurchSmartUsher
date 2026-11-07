@@ -266,16 +266,18 @@ export function ResponsivePortalNav(): ReactNode {
                 <div>
                   <div className="p-5 flex items-center justify-between border-b border-[#c3c6d4]/30">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#254b82] flex items-center justify-center text-white shadow-sm">
-                        <span className="material-symbols-outlined text-[22px]">church</span>
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-1 shadow-sm">
+                        <img
+                          src="/rccg-logo.png"
+                          alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                          className="w-full h-full object-contain"
+                        />
                       </div>
                       <div>
-                        <p className="font-['Newsreader'] font-bold text-lg text-[#254b82] leading-none">
-                          ChurchConnect
+                        <p className="font-['Newsreader'] font-bold text-base text-[#254b82] leading-tight">
+                          RCCG JESUS HOUSE
                         </p>
-                        <p className="text-[11px] text-[#6f531d] font-medium mt-1">
-                          Grace Sanctuary Parish · Lagos
-                        </p>
+                        <p className="text-[11px] text-[#6f531d] font-medium mt-0.5">OGBOMOSHO</p>
                       </div>
                     </div>
                     <button

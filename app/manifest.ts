@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ChurchConnect — Grace Sanctuary Parish",
+    name: "RCCG JESUS HOUSE, OGBOMOSHO",
     short_name: "ChurchConnect",
     description:
-      "Warm Sanctuary Digital Experience for Church Attendance, Rotating QR Check-in, Member Profiles & Ephemeral 7-Day Service Photos.",
+      "RCCG JESUS HOUSE, OGBOMOSHO — Church Attendance, Rotating QR Check-in, Member Profiles & Ephemeral 7-Day Service Photos.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#faf8ff",
@@ -13,15 +13,15 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     icons: [
       {
-        src: "/icon-192.svg",
-        sizes: "192x192",
-        type: "image/svg+xml",
+        src: "/rccg-logo.png",
+        sizes: "512x512",
+        type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icon-512.svg",
+        src: "/rccg-logo.png",
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: "image/png",
         purpose: "maskable",
       },
     ],

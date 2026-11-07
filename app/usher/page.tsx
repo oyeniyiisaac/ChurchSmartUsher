@@ -11,6 +11,7 @@ const USHER_DASHBOARD_QUERY = gql`
       fullName
       phone
       role
+      avatarUrl
     }
     activeService {
       id
@@ -21,6 +22,17 @@ const USHER_DASHBOARD_QUERY = gql`
       location
       usherStation
       status
+    }
+  }
+`;
+
+const SERVICE_ATTENDANCE_SUMMARY_QUERY = gql`
+  query UsherServiceSummary($serviceId: ID!) {
+    serviceAttendance(serviceId: $serviceId) {
+      serviceId
+      totalCount
+      memberCount
+      guestCount
     }
   }
 `;
@@ -53,6 +65,7 @@ interface UsherDashboardData {
     fullName: string;
     phone: string;
     role: "MEMBER" | "USHER" | "ADMIN";
+    avatarUrl?: string;
   } | null;
   activeService: {
     id: string;
@@ -83,6 +96,15 @@ export default function UsherPage(): ReactNode {
   const member = data?.me ?? null;
   const activeService = data?.activeService ?? null;
   const activeServiceId = activeService?.id ?? "65f000000000000000000100";
+
+  const { data: attendanceData } = useQuery(SERVICE_ATTENDANCE_SUMMARY_QUERY, {
+    variables: { serviceId: activeServiceId },
+    pollInterval: 5000,
+    fetchPolicy: "network-only",
+  });
+  const totalPresent = (attendanceData?.serviceAttendance?.totalCount as number | undefined) ?? 0;
+  const totalMembers = (attendanceData?.serviceAttendance?.memberCount as number | undefined) ?? 0;
+  const totalGuests = (attendanceData?.serviceAttendance?.guestCount as number | undefined) ?? 0;
 
   const { data: qrData, refetch: refetchQr } = useQuery<ServiceQrData>(SERVICE_QR_QUERY, {
     variables: { serviceId: activeService?.id ?? "" },
@@ -119,7 +141,7 @@ export default function UsherPage(): ReactNode {
     return () => window.clearInterval(timer);
   }, [sessionClosed, activeService?.id, refetchQr]);
 
-  const usherName = member?.fullName ?? "Brother Emmanuel Kalu";
+  const usherName = member?.fullName ?? "Usher On Duty";
   const usherInitials = usherName
     .split(" ")
     .map((part) => part[0])
@@ -143,9 +165,9 @@ export default function UsherPage(): ReactNode {
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </Link>
             <img
-              alt="ChurchConnect Brand Logo"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
               className="h-7 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              src="/rccg-logo.png"
             />
             <h1 className="font-headline-sm text-headline-sm text-on-surface truncate">Usher Qr</h1>
           </div>
@@ -158,7 +180,7 @@ export default function UsherPage(): ReactNode {
             <img
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+              src={member?.avatarUrl || "/rccg-logo.png"}
             />
           </div>
         </div>
@@ -314,16 +336,16 @@ export default function UsherPage(): ReactNode {
                 <div className="flex items-center justify-between flex-wrap gap-space-xs">
                   <div>
                     <h2 className="font-headline-md text-headline-md text-primary tracking-tight">
-                      Sunday First Service
+                      {activeService?.name ?? "Sunday First Service"}
                     </h2>
                     <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      Arrival &amp; Welcome Protocol
+                      {activeService?.location ?? "RCCG JESUS HOUSE, OGBOMOSHO"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-tertiary-container/10">
                     <span className="w-2.5 h-2.5 rounded-full bg-on-tertiary-container" />
                     <span className="font-label-lg text-label-lg text-tertiary font-bold">
-                      312 Present
+                      {totalPresent} Present
                     </span>
                   </div>
                 </div>
@@ -335,7 +357,7 @@ export default function UsherPage(): ReactNode {
                       groups
                     </span>
                     <span className="font-body-sm text-body-sm text-on-surface font-medium">
-                      284 Members
+                      {totalMembers} Members
                     </span>
                   </div>
                   <span className="text-outline-variant font-body-sm text-body-sm">·</span>
@@ -344,7 +366,7 @@ export default function UsherPage(): ReactNode {
                       person_add
                     </span>
                     <span className="font-body-sm text-body-sm text-on-surface font-medium">
-                      28 Guests
+                      {totalGuests} Guests
                     </span>
                   </div>
                   <span className="text-outline-variant font-body-sm text-body-sm">·</span>
@@ -353,7 +375,7 @@ export default function UsherPage(): ReactNode {
                       speed
                     </span>
                     <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      ~4 scans/min
+                      Live Sync
                     </span>
                   </div>
                 </div>
@@ -370,7 +392,7 @@ export default function UsherPage(): ReactNode {
                     <span>Live Attendance List</span>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-full bg-surface-container-lowest/20 font-label-sm text-label-sm font-semibold">
-                    312
+                    {totalPresent}
                   </span>
                 </Link>
 
@@ -453,7 +475,9 @@ export default function UsherPage(): ReactNode {
 
             <div className="w-full flex items-center justify-around py-space-sm bg-surface-container rounded-xl">
               <div className="flex flex-col items-center">
-                <span className="font-display-lg text-display-lg text-primary font-bold">312</span>
+                <span className="font-display-lg text-display-lg text-primary font-bold">
+                  {totalPresent}
+                </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   Total Present
                 </span>
@@ -461,7 +485,7 @@ export default function UsherPage(): ReactNode {
               <div className="w-px h-10 bg-outline-variant" />
               <div className="flex flex-col items-center">
                 <span className="font-headline-lg text-headline-lg text-tertiary font-bold">
-                  284
+                  {totalMembers}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   Members
@@ -470,7 +494,7 @@ export default function UsherPage(): ReactNode {
               <div className="w-px h-10 bg-outline-variant" />
               <div className="flex flex-col items-center">
                 <span className="font-headline-lg text-headline-lg text-secondary font-bold">
-                  28
+                  {totalGuests}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   First-Time Guests

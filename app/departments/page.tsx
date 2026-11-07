@@ -6,6 +6,11 @@ import { useState, type FormEvent, type ReactNode } from "react";
 
 const DEPARTMENTS_ACTIVITIES_QUERY = gql`
   query DepartmentsAndActivities {
+    me {
+      id
+      fullName
+      role
+    }
     departments {
       id
       name
@@ -74,107 +79,6 @@ interface ActivityItem {
   participantCount: number;
 }
 
-const INITIAL_DEPARTMENTS: DeptItem[] = [
-  {
-    id: "dept-1",
-    name: "Sanctuary Choir",
-    description: "Vocalists, Choir Directors, and Worship Instrumentation",
-    icon: "music_note",
-    leadName: "Isaac Olumide Adeleke (Tenor Lead)",
-    memberCount: 45,
-    attendancePct: 93,
-  },
-  {
-    id: "dept-2",
-    name: "Ushering & Protocol",
-    description: "Sanctuary Foyer Reception, QR Display & Seating Order",
-    icon: "groups",
-    leadName: "Sister Chioma Nwosu (Head Usher)",
-    memberCount: 30,
-    attendancePct: 93,
-  },
-  {
-    id: "dept-3",
-    name: "Media & Sound",
-    description: "Broadcast Engineering, Acoustics, and Sunday Photo Roll",
-    icon: "videocam",
-    leadName: "Femi Awolowo (Broadcast Tech)",
-    memberCount: 18,
-    attendancePct: 89,
-  },
-  {
-    id: "dept-4",
-    name: "Youth Fellowship",
-    description: "Young Adults Ministry, Campus Outreach & Mentorship",
-    icon: "diversity_3",
-    leadName: "Isaac Olumide Adeleke (Exco)",
-    memberCount: 85,
-    attendancePct: 87,
-  },
-  {
-    id: "dept-5",
-    name: "Sunday School",
-    description: "Foundational Bible Teaching & Discipleship Classes",
-    icon: "school",
-    leadName: "Deacon Samuel Okon",
-    memberCount: 24,
-    attendancePct: 92,
-  },
-  {
-    id: "dept-6",
-    name: "Women of Grace",
-    description: "Mothers & Sisters Prayer, Welfare, and Community Support",
-    icon: "volunteer_activism",
-    leadName: "Sister Grace Adebayo",
-    memberCount: 95,
-    attendancePct: 93,
-  },
-  {
-    id: "dept-7",
-    name: "Men's Fellowship",
-    description: "Elders & Brothers Leadership, Facility & Parish Stewardship",
-    icon: "shield_person",
-    leadName: "Elder Babatunde Bakare",
-    memberCount: 80,
-    attendancePct: 81,
-  },
-];
-
-const INITIAL_ACTIVITIES: ActivityItem[] = [
-  {
-    id: "act-1",
-    name: "Sunday School Class 4",
-    description: "Young Adults & Career Professionals Bible Exposition",
-    schedule: "Sundays · 7:15 AM – 8:00 AM",
-    icon: "school",
-    participantCount: 64,
-  },
-  {
-    id: "act-2",
-    name: "Midweek Bible Study",
-    description: "Wednesday Evening Digging Deep & Scriptural Study",
-    schedule: "Wednesdays · 6:00 PM – 7:30 PM",
-    icon: "auto_stories",
-    participantCount: 218,
-  },
-  {
-    id: "act-3",
-    name: "Discipleship Cohort",
-    description: "8-Week Spiritual Growth & Leadership Track",
-    schedule: "Saturdays · 4:00 PM – 5:30 PM",
-    icon: "diversity_3",
-    participantCount: 42,
-  },
-  {
-    id: "act-4",
-    name: "Believers Baptism Class",
-    description: "Foundational Faith & Immersion Preparation Cohort",
-    schedule: "Sundays · 11:00 AM – 12:00 PM",
-    icon: "water_drop",
-    participantCount: 19,
-  },
-];
-
 export default function DepartmentsAndActivitiesPage(): ReactNode {
   const { data, refetch } = useQuery(DEPARTMENTS_ACTIVITIES_QUERY, {
     fetchPolicy: "network-only",
@@ -199,8 +103,52 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
 
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
 
-  const departmentsList: DeptItem[] = [...INITIAL_DEPARTMENTS, ...addedDepts];
-  const activitiesList: ActivityItem[] = [...INITIAL_ACTIVITIES, ...addedActs];
+  const dbDepts: DeptItem[] = (
+    (data?.departments ?? []) as Array<{
+      id: string;
+      name: string;
+      description: string;
+      icon: string;
+      leadName: string;
+      memberCount: number;
+    }>
+  ).map((d) => ({
+    id: d.id,
+    name: d.name,
+    description: d.description,
+    icon: d.icon || "groups",
+    leadName: d.leadName || "Unit Coordinator",
+    memberCount: d.memberCount ?? 0,
+    attendancePct: d.memberCount > 0 ? 100 : 0,
+  }));
+
+  const dbActs: ActivityItem[] = (
+    (data?.activities ?? []) as Array<{
+      id: string;
+      name: string;
+      description: string;
+      schedule: string;
+      icon: string;
+      participantCount: number;
+    }>
+  ).map((a) => ({
+    id: a.id,
+    name: a.name,
+    description: a.description,
+    schedule: a.schedule,
+    icon: a.icon || "menu_book",
+    participantCount: a.participantCount ?? 0,
+  }));
+
+  const departmentsList: DeptItem[] = [
+    ...dbDepts,
+    ...addedDepts.filter((ad) => !dbDepts.some((d) => d.name === ad.name)),
+  ];
+  const activitiesList: ActivityItem[] = [
+    ...dbActs,
+    ...addedActs.filter((aa) => !dbActs.some((a) => a.name === aa.name)),
+  ];
+  const totalAssignedWorkforce = departmentsList.reduce((acc, d) => acc + d.memberCount, 0);
 
   async function handleCreateDepartment(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
@@ -236,7 +184,7 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
     setDeptName("");
     setDeptLead("");
     setDeptDesc("");
-    setBannerMessage(`Created department "${newItem.name}" in Grace Sanctuary Parish.`);
+    setBannerMessage(`Created department "${newItem.name}" in RCCG JESUS HOUSE, OGBOMOSHO.`);
   }
 
   async function handleCreateActivity(e: FormEvent<HTMLFormElement>): Promise<void> {
@@ -281,15 +229,19 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-on-primary text-[22px]">church</span>
+            <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src="/rccg-logo.png"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight truncate">
-                ChurchConnect
+                RCCG JESUS HOUSE
               </span>
               <span className="font-label-sm text-label-sm text-secondary truncate">
-                Grace Sanctuary Parish - Lagos
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
           </div>
@@ -413,10 +365,10 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="font-label-md text-label-md text-on-surface leading-tight">
-                  Pastor Emmanuel
+                  {data?.me?.fullName ?? "Parish Administrator"}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight">
-                  Admin Lead
+                  {data?.me?.role ?? "Admin Lead"}
                 </span>
               </div>
             </div>
@@ -448,7 +400,7 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
               <div className="flex flex-col gap-space-xs">
                 <div className="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
-                  <span>Grace Sanctuary Parish</span>
+                  <span>RCCG JESUS HOUSE, OGBOMOSHO</span>
                   <span className="material-symbols-outlined text-[14px]">chevron_right</span>
                   <span>Ministerial Governance</span>
                   <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -489,7 +441,7 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
                     </span>
                   </div>
                   <span className="font-body-sm text-body-sm text-on-surface-variant">
-                    7 Departmental Coordinators
+                    {departmentsList.length} Departmental Coordinators
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary">
@@ -526,7 +478,7 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-display-lg text-display-lg text-on-surface leading-none">
-                      377
+                      {totalAssignedWorkforce}
                     </span>
                     <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold">
                       Active
@@ -548,10 +500,10 @@ export default function DepartmentsAndActivitiesPage(): ReactNode {
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-display-lg text-display-lg text-tertiary leading-none">
-                      91%
+                      {departmentsList.length > 0 ? "100%" : "0%"}
                     </span>
                     <span className="font-label-sm text-label-sm text-tertiary font-semibold">
-                      +4.2% vs last wk
+                      DB Synced
                     </span>
                   </div>
                   <span className="font-body-sm text-body-sm text-on-surface-variant">

@@ -1,6 +1,7 @@
 import type { AuthenticatedMember } from "@/auth/session";
 import {
   type AttendanceRecordInfo,
+  getMyAttendanceHistory,
   getServiceAttendance,
   markManualPresent,
   markPresent,
@@ -27,6 +28,7 @@ import {
   listDepartments,
   listMembers,
   type MembersFilterInput,
+  updateMemberRole,
   updateMyProfile,
 } from "@/services/profile";
 import {
@@ -73,7 +75,7 @@ import {
   requestCheckinCode,
   verifyCheckinCode,
 } from "@/services/checkin-code";
-import type { ServiceType } from "@/db/models";
+import type { ServiceType, UserRole } from "@/db/models";
 import type {
   ActivityInput,
   AssignAffiliationsInput,
@@ -90,6 +92,7 @@ export const resolvers = {
   Member: {
     status: (parent: AuthenticatedMember): string => parent.status ?? "ACTIVE",
     gender: (parent: AuthenticatedMember): string => parent.gender ?? "Male",
+    avatarUrl: (parent: AuthenticatedMember): string => parent.avatarUrl ?? "",
     departmentIds: (parent: AuthenticatedMember): string[] => parent.departmentIds ?? [],
     activityIds: (parent: AuthenticatedMember): string[] => parent.activityIds ?? [],
     consentGivenAt: (parent: AuthenticatedMember): string =>
@@ -122,6 +125,15 @@ export const resolvers = {
       } catch {
         return authenticated;
       }
+    },
+
+    myAttendanceHistory: async (
+      _parent: unknown,
+      _args: unknown,
+      context: GraphQLContext,
+    ): Promise<AttendanceRecordInfo[]> => {
+      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
+      return getMyAttendanceHistory(authenticated.id);
     },
 
     myStreak: async (
@@ -286,6 +298,15 @@ export const resolvers = {
     ): Promise<AuthenticatedMember> => {
       const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
       return updateMyProfile(authenticated.id, args.input);
+    },
+
+    updateMemberRole: async (
+      _parent: unknown,
+      args: { memberId: string; role: UserRole },
+      context: GraphQLContext,
+    ): Promise<AuthenticatedMember> => {
+      requireRole(context.member ?? null, ["ADMIN"]);
+      return updateMemberRole(args.memberId, args.role);
     },
 
     createDepartment: async (

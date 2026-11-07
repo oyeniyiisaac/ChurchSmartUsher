@@ -46,10 +46,12 @@ const memberSchema = new Schema(
     phone: { type: String, required: true, unique: true, index: true },
     email: { type: String, required: false, trim: true },
     gender: { type: String, enum: MEMBER_GENDERS, default: "Male", required: false },
+    avatarUrl: { type: String, default: "", trim: true },
+    avatarPublicId: { type: String, default: "", trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: USER_ROLES, default: "MEMBER", required: true },
     status: { type: String, default: "ACTIVE", required: true },
-    department: { type: String, default: "Sanctuary Choir", required: true },
+    department: { type: String, default: "Unassigned", required: true },
     activities: { type: [String], default: [] },
     departmentIds: {
       type: [{ type: Schema.Types.ObjectId, ref: "Department" }],
@@ -87,7 +89,11 @@ const serviceSchema = new Schema(
     serviceType: { type: String, enum: SERVICE_TYPES, default: "SUNDAY", required: true },
     serviceDate: { type: String, required: true, index: true },
     startTime: { type: String, default: "8:30 AM", required: true },
-    location: { type: String, default: "Grace Sanctuary Auditorium", required: true },
+    location: {
+      type: String,
+      default: "RCCG JESUS HOUSE, OGBOMOSHO Auditorium",
+      required: true,
+    },
     usherStation: { type: String, default: "Door A (Main Entrance)", required: true },
     status: { type: String, enum: SERVICE_STATUSES, default: "SCHEDULED", required: true },
     qrSecret: { type: String, default: "default-service-qr-secret-key-2026", required: true },
@@ -113,7 +119,7 @@ const attendanceSchema = new Schema(
     },
     memberName: { type: String, required: true, trim: true },
     memberPhone: { type: String, default: "", trim: true },
-    memberDepartment: { type: String, default: "Sanctuary Choir", trim: true },
+    memberDepartment: { type: String, default: "Unassigned", trim: true },
     memberCode: { type: String, default: "", trim: true },
     isGuest: { type: Boolean, default: false, required: true },
     invitedBy: { type: String, default: "", trim: true },
@@ -142,15 +148,15 @@ const photoSchema = new Schema(
     albumKey: { type: String, default: "today", required: true, index: true },
     albumTitle: {
       type: String,
-      default: "Sunday Thanksgiving Service - 17 Nov 2024",
+      default: "Sunday Service - RCCG JESUS HOUSE, OGBOMOSHO",
       required: true,
     },
     serviceDate: { type: String, required: true },
-    photographer: { type: String, default: "Emmanuel & Grace", trim: true },
+    photographer: { type: String, default: "Media Department", trim: true },
     imageUrl: { type: String, required: true },
     storageKey: { type: String, required: true, unique: true },
-    fileSizeLabel: { type: String, default: "3.4 MB" },
-    fileSizeBytes: { type: Number, default: 3_400_000 },
+    fileSizeLabel: { type: String, default: "1.0 MB" },
+    fileSizeBytes: { type: Number, default: 1_000_000 },
     tags: { type: [String], default: [] },
     status: { type: String, enum: PHOTO_STATUSES, default: "PUBLISHED", required: true },
     needsConsentCheck: { type: Boolean, default: false, required: true },
@@ -161,6 +167,40 @@ const photoSchema = new Schema(
 );
 
 photoSchema.index({ expiresAt: 1, status: 1 });
+
+const parishSettingsSchema = new Schema(
+  {
+    parishName: {
+      type: String,
+      default: "RCCG JESUS HOUSE, OGBOMOSHO",
+      required: true,
+      trim: true,
+    },
+    denomination: {
+      type: String,
+      default: "The Redeemed Christian Church of God (RCCG)",
+      required: true,
+      trim: true,
+    },
+    foyerDesks: {
+      type: [String],
+      default: ["Door A (Main Entrance)", "Door B (Gallery Ramp)", "Foyer Desk #1 (Guest Lounge)"],
+    },
+    qrRotationSeconds: { type: Number, default: 45, required: true },
+    geofenceEnabled: { type: Boolean, default: true, required: true },
+    geofenceRadiusMeters: { type: Number, default: 150, required: true },
+    sanctuaryLatitude: { type: Number, default: 8.1333, required: true },
+    sanctuaryLongitude: { type: Number, default: 4.2567, required: true },
+    duplicateScanDefense: { type: Boolean, default: true, required: true },
+    childMinorShieldEnabled: { type: Boolean, default: true, required: true },
+    compressionProfile: {
+      type: String,
+      default: "Cloudinary Auto WebP (85% Quality)",
+      required: true,
+    },
+  },
+  { timestamps: true },
+);
 
 export type DepartmentDocument = InferSchemaType<typeof departmentSchema> & {
   _id: mongoose.Types.ObjectId;
@@ -182,6 +222,10 @@ export type AttendanceDocument = InferSchemaType<typeof attendanceSchema> & {
 };
 export type PhotoDocument = InferSchemaType<typeof photoSchema> & {
   _id: mongoose.Types.ObjectId;
+};
+export type ParishSettingsDocument = InferSchemaType<typeof parishSettingsSchema> & {
+  _id: mongoose.Types.ObjectId;
+  updatedAt?: Date;
 };
 
 export const Department: Model<DepartmentDocument> =
@@ -211,3 +255,7 @@ export const Attendance: Model<AttendanceDocument> =
 export const Photo: Model<PhotoDocument> =
   (mongoose.models.Photo as Model<PhotoDocument>) ||
   mongoose.model<PhotoDocument>("Photo", photoSchema);
+
+export const ParishSettingsModel: Model<ParishSettingsDocument> =
+  (mongoose.models.ParishSettings as Model<ParishSettingsDocument>) ||
+  mongoose.model<ParishSettingsDocument>("ParishSettings", parishSettingsSchema);

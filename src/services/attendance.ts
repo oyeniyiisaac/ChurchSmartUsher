@@ -408,33 +408,47 @@ export async function undoAttendance(attendanceId: string): Promise<boolean> {
   return true;
 }
 
+export async function getMyAttendanceHistory(memberId: string): Promise<AttendanceRecordInfo[]> {
+  try {
+    await connectToDatabase();
+    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(memberId)) {
+      const docs = await Attendance.find({
+        memberId: new mongoose.Types.ObjectId(memberId),
+      })
+        .sort({ checkedInAt: -1 })
+        .limit(50);
+      return docs.map(toAttendanceRecordInfo);
+    }
+  } catch {
+    // Fallback below
+  }
+  return Array.from(fallbackAttendanceMap.values()).filter((r) => r.memberId === memberId);
+}
+
 export async function getServiceAttendance(serviceId: string): Promise<ServiceAttendanceSummary> {
   try {
     await connectToDatabase();
-    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(serviceId)) {
-      const docs = await Attendance.find({
-        serviceId: new mongoose.Types.ObjectId(serviceId),
-      })
-        .sort({ checkedInAt: -1 })
-        .limit(200);
+    if (mongoose.connection.readyState === 1) {
+      const filter = mongoose.Types.ObjectId.isValid(serviceId)
+        ? { serviceId: new mongoose.Types.ObjectId(serviceId) }
+        : {};
+      const docs = await Attendance.find(filter).sort({ checkedInAt: -1 }).limit(300);
 
-      if (docs.length > 0) {
-        const records = docs.map(toAttendanceRecordInfo);
-        const guestCount = records.filter((r) => r.isGuest).length;
-        const memberCount = records.length - guestCount;
-        const qrCount = records.filter((r) => r.method === "QR").length;
-        const manualCount = records.filter((r) => r.method === "MANUAL").length;
+      const records = docs.map(toAttendanceRecordInfo);
+      const guestCount = records.filter((r) => r.isGuest).length;
+      const memberCount = records.length - guestCount;
+      const qrCount = records.filter((r) => r.method === "QR").length;
+      const manualCount = records.filter((r) => r.method === "MANUAL").length;
 
-        return {
-          serviceId,
-          totalCount: 312 + records.length,
-          memberCount: 284 + memberCount,
-          guestCount: 28 + guestCount,
-          qrCount: 298 + qrCount,
-          manualCount: 14 + manualCount,
-          records,
-        };
-      }
+      return {
+        serviceId,
+        totalCount: records.length,
+        memberCount,
+        guestCount,
+        qrCount,
+        manualCount,
+        records,
+      };
     }
   } catch {
     // Fallback below
@@ -450,11 +464,11 @@ export async function getServiceAttendance(serviceId: string): Promise<ServiceAt
 
   return {
     serviceId,
-    totalCount: 312 + fallbackRecords.length,
-    memberCount: 284 + memberDelta,
-    guestCount: 28 + guestDelta,
-    qrCount: 298 + qrDelta,
-    manualCount: 14 + manualDelta,
+    totalCount: fallbackRecords.length,
+    memberCount: memberDelta,
+    guestCount: guestDelta,
+    qrCount: qrDelta,
+    manualCount: manualDelta,
     records: fallbackRecords,
   };
 }

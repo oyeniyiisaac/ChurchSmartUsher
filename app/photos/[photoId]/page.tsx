@@ -1,8 +1,40 @@
 "use client";
 
+import { gql, useQuery } from "@apollo/client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { type ReactElement, useEffect, useState } from "react";
+
+const PHOTO_VIEWER_QUERY = gql`
+  query GetPhotoViewerData($id: ID!) {
+    me {
+      id
+      fullName
+      avatarUrl
+    }
+    servicePhoto(id: $id) {
+      id
+      title
+      fileName
+      albumTitle
+      serviceDate
+      photographer
+      imageUrl
+      fileSizeLabel
+      daysLeftLabel
+    }
+    servicePhotos(albumKey: "all") {
+      id
+      title
+      albumTitle
+      serviceDate
+      photographer
+      imageUrl
+      fileSizeLabel
+      daysLeftLabel
+    }
+  }
+`;
 
 interface ViewerPhotoSlide {
   id: string;
@@ -14,99 +46,60 @@ interface ViewerPhotoSlide {
   dateTimeLabel: string;
 }
 
-const SLIDES: ViewerPhotoSlide[] = [
-  {
-    id: "photo-1",
-    albumTitle: "Thanksgiving Sunday Service",
-    expiryText: "Expires in 3 days · Sun 24 Nov",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAsxIcTsJqarrXyVtdNznsxVsL7V1Y-7xVizf2ytbV1QKAtvOOk6R-8lpTIanP2ixcCFBEumHxwecegZQ5DjqvJlue7h9BPgWte1kUiqkEd-_EhnSCrQ1bU-VddRPca-qMqihakoMVVT_Dw4pUmjB3vDYTf-EuvB5DILRzTyVVNcZDz3p1ZkpjdsasA6ZR_b44KiYKu7JOr9WDJ9SXf66kE5wNoy5T5L4tPWCHBthQ",
-    fileSizeLabel: "3.4 MB",
-    photographer: "Emmanuel & Grace",
-    dateTimeLabel: "Sunday 17 Nov 2024 · 9:45 AM (First Service)",
-  },
-  {
-    id: "photo-2",
-    albumTitle: "Thanksgiving Sunday Service",
-    expiryText: "Expires in 3 days · Sun 24 Nov",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDUzDedsfSo8l-h9uud_0qc2UjaxWf6dsni4Rul7kQ4nwlBcDRfNE9q_4eP9wJvWaF4mHzMJYl6dfyzZj-8Q0ncdR5njBQsNqqhQXOX1mKBhQOiT0VfTVi32OJSzZya2xuWtUiDqXZTg8tn-QCXT5AHFbz_V7E7gV3IHxVymPC8_TVQYmXSY5KMMnF60ociY36K7PuI8Btq-tCQackHkyaRfBCjXolwdAO2hC6UI-g",
-    fileSizeLabel: "4.1 MB",
-    photographer: "Emmanuel & Grace",
-    dateTimeLabel: "Sunday 17 Nov 2024 · 9:45 AM (First Service)",
-  },
-  {
-    id: "photo-3",
-    albumTitle: "Thanksgiving Sunday Service",
-    expiryText: "Expires in 3 days · Sun 24 Nov",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCUc_c72PpuvnKasxlubgUPacO1sZJ4UDnvu2pFu7-UiluslFnOmCrN7ALfPhAAsp1VhJb-T5nYr8O8wDf6khrryELhAmS5TdQt4UuC1vuYjmrkOI_StrDh2MFLHvZPKqRFZqgrJiBx-8xsP5rxYlMLnhsd5LNHz1iCnKy-e3TAIxN2-H4M5Bzb8odnOXUZFnRFxC8lmrswFPNJYlvlfLL3l2ZQcRiZYRq0z_3qUDM",
-    fileSizeLabel: "3.1 MB",
-    photographer: "Emmanuel & Grace",
-    dateTimeLabel: "Sunday 17 Nov 2024 · 9:45 AM (First Service)",
-  },
-  {
-    id: "photo-4",
-    albumTitle: "Thanksgiving Sunday Service",
-    expiryText: "Expires in 3 days · Sun 24 Nov",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBsdo8jVOaxFelJzxnfdC122VNSbFdbqErcIERjiA4-2t0okYmg34LNmVYCAxIUJffhwPpEUCET7nK3IaRzOHH4CcXisObdTphT9Qut3CDkkGQgJCCRcv7GBte7P79J9jxFkLxoIdlTE_Oo5B5xh7W88eusSS1zpUgn_ZeBsWBziBqAuXEF0qiy_i4g3oc3SwaDC4MT7JUHcxfIcZnQ_o7GWv4BF6rwa-bfzFEV38U",
-    fileSizeLabel: "3.2 MB",
-    photographer: "Emmanuel & Grace",
-    dateTimeLabel: "Sunday 17 Nov 2024 · 9:45 AM (First Service)",
-  },
-  {
-    id: "photo-5",
-    albumTitle: "Thanksgiving Sunday Service",
-    expiryText: "Expires in 3 days · Sun 24 Nov",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDJZrhy2NPwmlgqzYQHh1VeWI2SSTDUoJuCL9NpZgiLKCfV-CMrCGG_TrZyx10SxOLiGfgHX54yvQCZL_mf2PeoqPU1Nohr9rzb4dOEmiP2VD61sCYMKvzcjVED2K6dD-Q3MsuRIR6pWAw4YTsTLT9T1PNB0Dsgruq9oDGO_SjL5LcPxtIhMdEcBvUhsXMF5T-HPj_4t1YMNTzfdD5CxdnsncNpAUeY4yxSXaDbED4",
-    fileSizeLabel: "4.4 MB",
-    photographer: "Emmanuel & Grace",
-    dateTimeLabel: "Sunday 17 Nov 2024 · 9:45 AM (First Service)",
-  },
-  {
-    id: "photo-6",
-    albumTitle: "Thanksgiving Sunday Service",
-    expiryText: "Expires in 3 days · Sun 24 Nov",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuC12FuQ6I29zLPHseTIqG9xTIV04uC25m8QB71CHf0aNh-HLp03JcnSaNVJExlaPw0WbUOAWaYSS3xQnLzSb5wF93qWgPDfJU2_kdlSnrn8pnz259PVzxsmfN-J74S0x-FlLyNXOoDlsG7kg5iTqTLKvgYEaMMIvb5vlXcLeiKhurZ7WWKNYTjTVDfpVOs4nFL3yue5mZiF6xKUy4PRrr8Li68NThHx09W9QM_lgIY",
-    fileSizeLabel: "2.7 MB",
-    photographer: "Emmanuel & Grace",
-    dateTimeLabel: "Sunday 17 Nov 2024 · 9:45 AM (First Service)",
-  },
-];
-
-const THUMBNAILS = [
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAsxIcTsJqarrXyVtdNznsxVsL7V1Y-7xVizf2ytbV1QKAtvOOk6R-8lpTIanP2ixcCFBEumHxwecegZQ5DjqvJlue7h9BPgWte1kUiqkEd-_EhnSCrQ1bU-VddRPca-qMqihakoMVVT_Dw4pUmjB3vDYTf-EuvB5DILRzTyVVNcZDz3p1ZkpjdsasA6ZR_b44KiYKu7JOr9WDJ9SXf66kE5wNoy5T5L4tPWCHBthQ",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDUzDedsfSo8l-h9uud_0qc2UjaxWf6dsni4Rul7kQ4nwlBcDRfNE9q_4eP9wJvWaF4mHzMJYl6dfyzZj-8Q0ncdR5njBQsNqqhQXOX1mKBhQOiT0VfTVi32OJSzZya2xuWtUiDqXZTg8tn-QCXT5AHFbz_V7E7gV3IHxVymPC8_TVQYmXSY5KMMnF60ociY36K7PuI8Btq-tCQackHkyaRfBCjXolwdAO2hC6UI-g",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCUc_c72PpuvnKasxlubgUPacO1sZJ4UDnvu2pFu7-UiluslFnOmCrN7ALfPhAAsp1VhJb-T5nYr8O8wDf6khrryELhAmS5TdQt4UuC1vuYjmrkOI_StrDh2MFLHvZPKqRFZqgrJiBx-8xsP5rxYlMLnhsd5LNHz1iCnKy-e3TAIxN2-H4M5Bzb8odnOXUZFnRFxC8lmrswFPNJYlvlfLL3l2ZQcRiZYRq0z_3qUDM",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAbZ9E46AiH8PbVW0R1e324fuqwbXjaHjTtU5JGuuxsFqn8Ng6RnvbqrKW126yo59WhiA6IIfgRsWar0dZDM2JxeUgbbUB9ezbBo8nvcwgGHOSdNi6bDj9FA0eqg67F_Oirrj1cAwUs4mwVESIXRjwPslkw8y8BxrsbCFdki4eB5o9D-ZVEnRtWwmXu7rDKWlVmCrihY2GCJIK6hvues7JVbIYHGSw6rN8Lv2xRpdc",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDJZrhy2NPwmlgqzYQHh1VeWI2SSTDUoJuCL9NpZgiLKCfV-CMrCGG_TrZyx10SxOLiGfgHX54yvQCZL_mf2PeoqPU1Nohr9rzb4dOEmiP2VD61sCYMKvzcjVED2K6dD-Q3MsuRIR6pWAw4YTsTLT9T1PNB0Dsgruq9oDGO_SjL5LcPxtIhMdEcBvUhsXMF5T-HPj_4t1YMNTzfdD5CxdnsncNpAUeY4yxSXaDbED4",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuC12FuQ6I29zLPHseTIqG9xTIV04uC25m8QB71CHf0aNh-HLp03JcnSaNVJExlaPw0WbUOAWaYSS3xQnLzSb5wF93qWgPDfJU2_kdlSnrn8pnz259PVzxsmfN-J74S0x-FlLyNXOoDlsG7kg5iTqTLKvgYEaMMIvb5vlXcLeiKhurZ7WWKNYTjTVDfpVOs4nFL3yue5mZiF6xKUy4PRrr8Li68NThHx09W9QM_lgIY",
-];
-
 export default function PhotoViewerPage(): ReactElement {
   const params = useParams<{ photoId?: string }>();
-  const photoId = params?.photoId ?? "photo-4";
+  const photoId = params?.photoId ?? "photo-1";
 
-  useEffect(() => {
-    void fetch("/api/graphql", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: "query GetServicePhoto($id: ID!) { servicePhoto(id: $id) { id title albumTitle } }",
-        variables: { id: photoId },
-      }),
-    }).catch(() => undefined);
-  }, [photoId]);
+  const { data } = useQuery(PHOTO_VIEWER_QUERY, {
+    variables: { id: photoId },
+    fetchPolicy: "network-only",
+  });
 
-  const [activeIndex, setActiveIndex] = useState(3);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [downloadState, setDownloadState] = useState<"idle" | "saving" | "done">("idle");
   const [showSaveToast, setShowSaveToast] = useState(false);
 
-  const currentSlide = SLIDES[activeIndex] ?? SLIDES[3]!;
+  const slides: ViewerPhotoSlide[] = (
+    (data?.servicePhotos as Array<{
+      id: string;
+      albumTitle: string;
+      daysLeftLabel: string;
+      imageUrl: string;
+      fileSizeLabel: string;
+      photographer: string;
+      serviceDate: string;
+    }>) ?? []
+  ).map((p) => ({
+    id: p.id,
+    albumTitle: p.albumTitle,
+    expiryText: `${p.daysLeftLabel} · Auto-expires after 7 days`,
+    imageUrl: p.imageUrl,
+    fileSizeLabel: p.fileSizeLabel,
+    photographer: p.photographer,
+    dateTimeLabel: p.serviceDate,
+  }));
+
+  useEffect(() => {
+    const idx = slides.findIndex((s) => s.id === photoId);
+    if (idx >= 0) {
+      setActiveIndex(idx);
+    }
+  }, [photoId, slides.length]);
+
+  const fallbackSlide: ViewerPhotoSlide = {
+    id: photoId,
+    albumTitle:
+      (data?.servicePhoto?.albumTitle as string | undefined) ?? "RCCG JESUS HOUSE, OGBOMOSHO",
+    expiryText: "Expires in 7 days · Auto-clears",
+    imageUrl: (data?.servicePhoto?.imageUrl as string | undefined) ?? "/rccg-logo.png",
+    fileSizeLabel: (data?.servicePhoto?.fileSizeLabel as string | undefined) ?? "High-Res",
+    photographer: (data?.servicePhoto?.photographer as string | undefined) ?? "Media Team",
+    dateTimeLabel: (data?.servicePhoto?.serviceDate as string | undefined) ?? "Sunday Service",
+  };
+
+  const currentSlide = slides[activeIndex] ?? fallbackSlide;
+  const totalSlides = Math.max(slides.length, 1);
 
   function handleDownload(): void {
     setDownloadState("saving");
@@ -133,9 +126,9 @@ export default function PhotoViewerPage(): ReactElement {
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </Link>
             <img
-              alt="ChurchConnect Brand Logo"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
               className="h-7 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              src="/rccg-logo.png"
             />
             <h1 className="font-headline-sm text-headline-sm text-on-surface truncate">
               Photo Viewer
@@ -146,7 +139,7 @@ export default function PhotoViewerPage(): ReactElement {
               <img
                 alt="Profile"
                 className="w-8 h-8 rounded-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                src={(data?.me?.avatarUrl as string | undefined) || "/rccg-logo.png"}
               />
             </Link>
           </div>
@@ -166,7 +159,7 @@ export default function PhotoViewerPage(): ReactElement {
                 <span className="font-label-md text-label-md text-on-surface">Back to Gallery</span>
               </Link>
               <span className="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">
-                Photo {activeIndex + 1} of 18
+                Photo {activeIndex + 1} of {totalSlides}
               </span>
             </div>
             <div className="flex items-center justify-between bg-surface-container-high px-space-md py-2 rounded-xl">
@@ -224,9 +217,7 @@ export default function PhotoViewerPage(): ReactElement {
                 <button
                   aria-label="Previous photo"
                   className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-inverse-surface/40 backdrop-blur-md text-on-primary flex items-center justify-center active:scale-90 transition-transform"
-                  onClick={() =>
-                    setActiveIndex((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)
-                  }
+                  onClick={() => setActiveIndex((prev) => (prev - 1 + totalSlides) % totalSlides)}
                   type="button"
                 >
                   <span className="material-symbols-outlined text-[22px]">chevron_left</span>
@@ -234,7 +225,7 @@ export default function PhotoViewerPage(): ReactElement {
                 <button
                   aria-label="Next photo"
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-inverse-surface/40 backdrop-blur-md text-on-primary flex items-center justify-center active:scale-90 transition-transform"
-                  onClick={() => setActiveIndex((prev) => (prev + 1) % SLIDES.length)}
+                  onClick={() => setActiveIndex((prev) => (prev + 1) % totalSlides)}
                   type="button"
                 >
                   <span className="material-symbols-outlined text-[22px]">chevron_right</span>
@@ -263,7 +254,7 @@ export default function PhotoViewerPage(): ReactElement {
                         Photo saved to phone
                       </p>
                       <p className="font-body-sm text-body-sm text-on-primary-container">
-                        Added to &apos;ChurchConnect&apos; album in Gallery
+                        Added to &apos;RCCG JESUS HOUSE, OGBOMOSHO&apos; album in Gallery
                       </p>
                     </div>
                   </div>
@@ -359,10 +350,12 @@ export default function PhotoViewerPage(): ReactElement {
                   <span className="font-label-md text-label-md text-on-surface font-semibold">
                     More from this Service
                   </span>
-                  <span className="font-label-sm text-label-sm text-primary">18 photos</span>
+                  <span className="font-label-sm text-label-sm text-primary">
+                    {slides.length} photos
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                  {THUMBNAILS.map((thumb, idx) => {
+                  {slides.map((slideItem, idx) => {
                     const isActive = idx === activeIndex;
                     return (
                       <button
@@ -371,14 +364,14 @@ export default function PhotoViewerPage(): ReactElement {
                             ? "w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-md bg-primary-container p-0.5"
                             : "w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm opacity-60"
                         }
-                        key={thumb}
+                        key={slideItem.id}
                         onClick={() => setActiveIndex(idx)}
                         type="button"
                       >
                         <img
                           alt={`Service thumbnail ${idx + 1}`}
                           className={`w-full h-full object-cover ${isActive ? "rounded-md" : ""}`}
-                          src={thumb}
+                          src={slideItem.imageUrl}
                         />
                       </button>
                     );

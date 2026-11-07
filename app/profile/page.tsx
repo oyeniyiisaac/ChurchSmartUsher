@@ -2,7 +2,7 @@
 
 import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 
 const MY_PROFILE_QUERY = gql`
   query MyProfile {
@@ -12,6 +12,7 @@ const MY_PROFILE_QUERY = gql`
       phone
       email
       gender
+      avatarUrl
       role
       status
       department
@@ -21,6 +22,14 @@ const MY_PROFILE_QUERY = gql`
       notes
       currentStreak
       longestStreak
+    }
+    myAttendanceHistory {
+      id
+      serviceId
+      memberName
+      method
+      station
+      checkedInAt
     }
   }
 `;
@@ -33,6 +42,7 @@ const UPDATE_MY_PROFILE_MUTATION = gql`
       phone
       email
       gender
+      avatarUrl
       department
       activities
       memberCode
@@ -49,6 +59,7 @@ interface MyProfileQueryData {
     phone: string;
     email?: string | null;
     gender?: string | null;
+    avatarUrl?: string | null;
     role: "MEMBER" | "USHER" | "ADMIN";
     status: string;
     department: string;
@@ -59,42 +70,15 @@ interface MyProfileQueryData {
     currentStreak: number;
     longestStreak: number;
   } | null;
+  myAttendanceHistory: Array<{
+    id: string;
+    serviceId: string;
+    memberName: string;
+    method: string;
+    station: string;
+    checkedInAt: string;
+  }>;
 }
-
-const ATTENDANCE_RECORDS = [
-  {
-    id: "rec-1",
-    title: "Sunday First Service",
-    dateTime: "Sunday 17 Nov 2024 · 8:42 AM",
-    icon: "church",
-    iconBoxClass: "bg-surface-container-high text-primary",
-    method: "Self QR",
-  },
-  {
-    id: "rec-2",
-    title: "Special Thanksgiving",
-    dateTime: "Sunday 10 Nov 2024 · 8:35 AM",
-    icon: "celebration",
-    iconBoxClass: "bg-secondary-fixed text-on-secondary-fixed",
-    method: "Self QR",
-  },
-  {
-    id: "rec-3",
-    title: "Holy Communion Service",
-    dateTime: "Sunday 03 Nov 2024 · 8:50 AM",
-    icon: "wine_bar",
-    iconBoxClass: "bg-surface-container-high text-primary",
-    method: "Self QR",
-  },
-  {
-    id: "rec-4",
-    title: "Sunday First Service",
-    dateTime: "Sunday 27 Oct 2024 · 9:05 AM",
-    icon: "church",
-    iconBoxClass: "bg-surface-container-high text-primary",
-    method: "Usher Marked",
-  },
-] as const;
 
 export default function ProfilePage(): ReactNode {
   const { data, refetch } = useQuery<MyProfileQueryData>(MY_PROFILE_QUERY, {
@@ -103,79 +87,76 @@ export default function ProfilePage(): ReactNode {
   const [updateProfile, { loading: saving }] = useMutation(UPDATE_MY_PROFILE_MUTATION);
 
   const member = data?.me ?? null;
+  const attendanceHistory = data?.myAttendanceHistory ?? [];
 
-  const [localOverride, setLocalOverride] = useState<{
-    fullName: string;
-    phone: string;
-    email: string;
-    gender: "Male" | "Female";
-    emergencyContact: string;
-  } | null>(null);
-
-  const displayFullName = localOverride?.fullName ?? member?.fullName ?? "Isaac Olumide Adeleke";
-  const displayPhone = localOverride?.phone ?? member?.phone ?? "+234 803 456 7890";
-  const displayEmail = localOverride?.email ?? member?.email ?? "isaac.adeleke@gmail.com";
-  const displayMemberCode = member?.memberCode ?? "CC-2024-0482";
-  const displayDepartment = member?.department ?? "Sanctuary Choir (Tenor)";
-  const displayActivities =
-    member?.activities && member.activities.length > 0
-      ? member.activities
-      : ["Sunday School Class 4", "Midweek Bible Study", "Discipleship Cohort"];
+  const displayFullName = member?.fullName ?? "Not Signed In";
+  const displayPhone = member?.phone ?? "—";
+  const displayEmail = member?.email || "No email provided";
+  const displayMemberCode = member?.memberCode ?? "—";
+  const displayDepartment = member?.department || "Unassigned";
+  const displayActivities = member?.activities ?? [];
+  const displayAvatarUrl = member?.avatarUrl || "/rccg-logo.png";
 
   const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
-  const [formFullName, setFormFullName] = useState<string>(displayFullName);
-  const [formPhone, setFormPhone] = useState<string>(displayPhone);
-  const [formEmail, setFormEmail] = useState<string>(displayEmail);
+  const [formFullName, setFormFullName] = useState<string>("");
+  const [formPhone, setFormPhone] = useState<string>("");
+  const [formEmail, setFormEmail] = useState<string>("");
   const [formGender, setFormGender] = useState<"Male" | "Female">("Male");
   const [formEmergency, setFormEmergency] = useState<string>("");
+  const [formAvatarBase64, setFormAvatarBase64] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   function openEditModal(): void {
-    setFormFullName(displayFullName);
-    setFormPhone(displayPhone);
-    setFormEmail(displayEmail);
-    setFormGender(
-      (localOverride?.gender ?? (member?.gender as "Male" | "Female" | undefined)) || "Male",
-    );
-    setFormEmergency(localOverride?.emergencyContact ?? member?.emergencyContact ?? "");
+    setFormFullName(member?.fullName ?? "");
+    setFormPhone(member?.phone ?? "");
+    setFormEmail(member?.email ?? "");
+    setFormGender((member?.gender as "Male" | "Female" | undefined) ?? "Male");
+    setFormEmergency(member?.emergencyContact ?? "");
+    setFormAvatarBase64(null);
     setErrorMsg(null);
     setEditModalOpen(true);
+  }
+
+  function handleAvatarFileChange(e: ChangeEvent<HTMLInputElement>): void {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setFormAvatarBase64(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   async function handleSaveProfile(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (member) {
-      try {
-        await updateProfile({
-          variables: {
-            input: {
-              fullName: formFullName,
-              phone: formPhone,
-              email: formEmail,
-              gender: formGender,
-              emergencyContact: formEmergency,
-            },
+    if (!member) {
+      setErrorMsg("Please sign in first to update your profile.");
+      return;
+    }
+
+    try {
+      await updateProfile({
+        variables: {
+          input: {
+            fullName: formFullName,
+            phone: formPhone,
+            email: formEmail,
+            gender: formGender,
+            emergencyContact: formEmergency,
+            ...(formAvatarBase64 ? { avatarBase64: formAvatarBase64 } : {}),
           },
-        });
-        await refetch();
-        setEditModalOpen(false);
-        setFeedbackMsg("Profile updated and synced with Grace Sanctuary Parish Registry.");
-      } catch (err) {
-        setErrorMsg(err instanceof Error ? err.message : "Failed to update profile.");
-      }
-    } else {
-      setLocalOverride({
-        fullName: formFullName,
-        phone: formPhone,
-        email: formEmail,
-        gender: formGender,
-        emergencyContact: formEmergency,
+        },
       });
+      await refetch();
       setEditModalOpen(false);
-      setFeedbackMsg("Profile updated in preview session.");
+      setFeedbackMsg("Profile and Cloudinary avatar synced with RCCG JESUS HOUSE, OGBOMOSHO.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update profile.");
     }
   }
 
@@ -186,13 +167,13 @@ export default function ProfilePage(): ReactNode {
         <div className="h-16 px-4 sm:px-6 lg:px-8 max-w-[600px] md:max-w-4xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
             <img
-              alt="ChurchConnect Brand Logo"
-              className="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Logo"
+              className="h-8 w-8 object-contain"
+              src="/rccg-logo.png"
             />
             <div className="flex flex-col">
               <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">
-                ChurchConnect
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
               <span className="font-headline-sm text-headline-sm text-on-surface leading-tight">
                 Profile
@@ -213,8 +194,8 @@ export default function ProfilePage(): ReactNode {
             >
               <img
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                className="w-8 h-8 rounded-full object-cover bg-surface-container"
+                src={displayAvatarUrl}
               />
             </Link>
           </div>
@@ -246,7 +227,6 @@ export default function ProfilePage(): ReactNode {
             {/* Left Column on Desktop: Member Profile Header Card */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               <section className="w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col items-center text-center relative overflow-hidden">
-                {/* Decorative Ambient Glow */}
                 <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-primary-fixed/30 blur-2xl pointer-events-none" />
                 <div className="absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-secondary-fixed/40 blur-xl pointer-events-none" />
 
@@ -255,8 +235,8 @@ export default function ProfilePage(): ReactNode {
                   <div className="w-24 h-24 rounded-full p-1 bg-surface-container-high shadow-md">
                     <img
                       alt={displayFullName}
-                      className="w-full h-full rounded-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+                      className="w-full h-full rounded-full object-cover bg-white"
+                      src={displayAvatarUrl}
                     />
                   </div>
                   <div className="absolute bottom-0 right-1 bg-tertiary-container text-on-tertiary-container rounded-full p-1 shadow-sm flex items-center justify-center">
@@ -281,7 +261,7 @@ export default function ProfilePage(): ReactNode {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low text-secondary mb-space-md">
                   <span className="w-2 h-2 rounded-full bg-secondary-container animate-pulse" />
                   <span className="font-label-md text-label-md font-medium text-on-surface">
-                    Active Member · Baptized
+                    {member ? `${member.status} · ${member.role}` : "Guest Session"}
                   </span>
                 </div>
 
@@ -304,7 +284,7 @@ export default function ProfilePage(): ReactNode {
                   type="button"
                 >
                   <span className="material-symbols-outlined text-[20px]">edit</span>
-                  <span>Edit Profile Information</span>
+                  <span>Edit Profile &amp; Photo</span>
                 </button>
               </section>
 
@@ -319,7 +299,7 @@ export default function ProfilePage(): ReactNode {
                   </span>
                 </div>
                 <p className="font-body-sm text-body-sm text-outline mt-0.5">
-                  Data managed securely by Grace Sanctuary Parish
+                  Data managed securely by RCCG JESUS HOUSE, OGBOMOSHO
                 </p>
               </section>
             </div>
@@ -338,26 +318,16 @@ export default function ProfilePage(): ReactNode {
                     </h2>
                   </div>
                   <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    2 Units
+                    {displayDepartment && displayDepartment !== "Unassigned" ? "1 Unit" : "0 Units"}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-high text-on-surface shadow-xs">
                     <span className="material-symbols-outlined text-[18px] text-primary-container">
-                      music_note
+                      groups
                     </span>
                     <span className="font-label-md text-label-md font-semibold">
-                      {displayDepartment.includes("Choir")
-                        ? "Sanctuary Choir (Tenor)"
-                        : displayDepartment}
-                    </span>
-                  </div>
-                  <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-secondary-fixed text-on-secondary-fixed shadow-xs">
-                    <span className="material-symbols-outlined text-[18px] text-secondary">
-                      star
-                    </span>
-                    <span className="font-label-md text-label-md font-semibold">
-                      Youth Fellowship Executive
+                      {displayDepartment}
                     </span>
                   </div>
                 </div>
@@ -378,26 +348,32 @@ export default function ProfilePage(): ReactNode {
                     {displayActivities.length} Groups
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {displayActivities.map((actName, idx) => {
-                    const icons = ["school", "auto_stories", "diversity_3", "water_drop"];
-                    const icon = icons[idx % icons.length];
-                    return (
-                      <div
-                        key={actName}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface"
-                      >
-                        <span className="material-symbols-outlined text-[16px] text-outline">
-                          {icon}
-                        </span>
-                        <span className="font-label-md text-label-md">{actName}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {displayActivities.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {displayActivities.map((actName, idx) => {
+                      const icons = ["school", "auto_stories", "diversity_3", "water_drop"];
+                      const icon = icons[idx % icons.length];
+                      return (
+                        <div
+                          key={actName}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface"
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-outline">
+                            {icon}
+                          </span>
+                          <span className="font-label-md text-label-md">{actName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">
+                    No weekly activities assigned yet.
+                  </p>
+                )}
               </section>
 
-              {/* Attendance History Log */}
+              {/* Attendance History Log (from MongoDB) */}
               <section className="flex flex-col gap-space-sm">
                 <div className="flex items-center justify-between px-space-xs">
                   <div className="flex items-center gap-1.5">
@@ -409,42 +385,46 @@ export default function ProfilePage(): ReactNode {
                     </h2>
                   </div>
                   <span className="font-label-sm text-label-sm text-primary font-medium">
-                    Recent 4 Weeks
+                    {attendanceHistory.length} Record(s)
                   </span>
                 </div>
                 <div className="flex flex-col gap-space-xs">
-                  {ATTENDANCE_RECORDS.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between"
-                    >
-                      <div className="flex items-start gap-space-sm">
-                        <div
-                          className={`w-10 h-10 rounded-lg ${rec.iconBoxClass} flex items-center justify-center shrink-0`}
-                        >
-                          <span className="material-symbols-outlined text-[22px]">{rec.icon}</span>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-label-lg text-label-lg text-on-surface font-semibold">
-                              {rec.title}
+                  {attendanceHistory.length > 0 ? (
+                    attendanceHistory.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between"
+                      >
+                        <div className="flex items-start gap-space-sm">
+                          <div className="w-10 h-10 rounded-lg bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-[22px]">church</span>
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-label-lg text-label-lg text-on-surface font-semibold">
+                                {rec.station}
+                              </span>
+                            </div>
+                            <span className="font-body-sm text-body-sm text-on-surface-variant">
+                              {new Date(rec.checkedInAt).toLocaleString()}
                             </span>
                           </div>
-                          <span className="font-body-sm text-body-sm text-on-surface-variant">
-                            {rec.dateTime}
+                        </div>
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <span className="px-2 py-0.5 rounded-md bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold">
+                            Present
+                          </span>
+                          <span className="font-label-sm text-label-sm text-outline-variant">
+                            {rec.method}
                           </span>
                         </div>
                       </div>
-                      <div className="shrink-0 flex flex-col items-end gap-1">
-                        <span className="px-2 py-0.5 rounded-md bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold">
-                          Present
-                        </span>
-                        <span className="font-label-sm text-label-sm text-outline-variant">
-                          {rec.method}
-                        </span>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="p-space-md rounded-xl bg-surface-container-lowest shadow-sm text-center text-on-surface-variant font-body-sm text-body-sm">
+                      No attendance records found in the database yet.
                     </div>
-                  ))}
+                  )}
                 </div>
               </section>
             </div>
@@ -480,6 +460,22 @@ export default function ProfilePage(): ReactNode {
               )}
 
               <form onSubmit={(e) => void handleSaveProfile(e)} className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="edit-avatar"
+                    className="font-label-sm text-label-sm text-on-surface-variant"
+                  >
+                    Profile Picture (Uploads to Cloudinary)
+                  </label>
+                  <input
+                    id="edit-avatar"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    className="py-2 px-space-md rounded-xl bg-surface-container-low text-on-surface font-body-sm text-body-sm"
+                  />
+                </div>
+
                 <div className="flex flex-col gap-1">
                   <label
                     htmlFor="edit-fullname"
@@ -562,7 +558,7 @@ export default function ProfilePage(): ReactNode {
                   <input
                     id="edit-emergency"
                     type="text"
-                    placeholder="+234 802 123 4567"
+                    placeholder="+234 802 000 0000"
                     value={formEmergency}
                     onChange={(e) => setFormEmergency(e.target.value)}
                     className="h-11 px-space-md rounded-xl bg-surface-container-low text-on-surface font-body-sm text-body-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -582,7 +578,7 @@ export default function ProfilePage(): ReactNode {
                     disabled={saving}
                     className="h-11 px-space-lg rounded-xl bg-primary text-on-primary font-label-md text-label-md shadow-sm cursor-pointer disabled:opacity-60"
                   >
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saving ? "Uploading & Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>

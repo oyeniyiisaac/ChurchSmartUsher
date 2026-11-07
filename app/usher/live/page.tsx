@@ -2,15 +2,26 @@
 
 import { gql, useMutation, useQuery } from "@apollo/client";
 import Link from "next/link";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 const USHER_LIVE_QUERY = gql`
-  query UsherLiveDesk($serviceId: ID!) {
+  query UsherLiveDesk($serviceId: ID!, $search: String) {
+    me {
+      id
+      fullName
+      avatarUrl
+    }
     activeService {
       id
       name
       usherStation
       status
+    }
+    members(search: $search) {
+      id
+      fullName
+      phone
+      department
     }
     serviceAttendance(serviceId: $serviceId) {
       serviceId
@@ -76,78 +87,20 @@ interface FeedCard {
   initials?: string;
 }
 
-const INITIAL_FEED: FeedCard[] = [
-  {
-    id: "feed-isaac",
-    name: "Isaac Olumide Adeleke",
-    department: "Sanctuary Choir",
-    timeLabel: "8:42 AM",
-    mode: "Self Scan",
-    justNow: true,
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM",
-  },
-  {
-    id: "feed-chioma",
-    name: "Sister Chioma Okonkwo",
-    department: "Ushering Department",
-    timeLabel: "8:41 AM · 1m ago",
-    mode: "Self Scan",
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAXLSlzzHv3Kir0FAAjF9fHh7MlKtMxvwm1f2Tkrp5U3uOQfLxY8vQW42GXNRHTJSLAiDfK_Tm9LdUKJVFFnNZuwBv51IgpSkjQUWPUuSTGi5HMDnr7GEYn_DSjhNycuuQln3LdWKwKZveK9LI1HPX6ieQ8fpoAnX2c1uhhWhhR_KupgpZ1LVjj3ySAkGOnkPVCt5eL9BJ_NDxLuuL0IOsFYD6Eb1Z4V1Rycmy1eC0",
-  },
-  {
-    id: "feed-babatunde",
-    name: "Elder Babatunde Cole",
-    department: "Men's Fellowship",
-    usherSubtext: "By Usher Emmanuel",
-    timeLabel: "8:40 AM · 2m ago",
-    mode: "Manual Check",
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAXL3GNUFPJ6GPPv89jdyQNATeRaJt_ydZ9wTE_n03p7lzdJOul2zvGE-VTYKeDouPKUTbaVQ_phbXDRQkl7wcL0tt-5aLmT-NEHaQVPWzhirlfuzVaJhVvoQNwj-wYVn7v_SDX26MMjx8yX6275f12jD5i3wXsY4bCWDKfiUlSqMx6ki423RbZyNFp15RVMxcYjkxa_DIjl_4aVnV5_0HN-jiqUu3LZCMFumPQ0Ng",
-  },
-  {
-    id: "feed-ngozi",
-    name: "Ngozi Eze",
-    department: "First-time Visitor",
-    guestSubtext: "Assigned: Hospitality Desk",
-    timeLabel: "8:39 AM · 3m ago",
-    mode: "Guest Pass",
-    isGuest: true,
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBeqVP4plgrcrxrUHwFPR3N8rAXgtHIllKhFaL9wM13RpV1WGPeO8EmPVWJDOssfklzcbAsP7AEbG6bVyu68Z5p-HxcDQR4VyEu7B-zaCb0JkVCwoMYqclboPf3SRpyhWT02CDs93O1sJ69CepVt1E_kQA798BtH1AAk6dwY3Tj6TOHaIfR_u5VFVzDPfmfl60bXBEnK4s0d5JohBlO6fkajtDJO9LOxrTWSMHAxbk",
-  },
-  {
-    id: "feed-pastor",
-    name: "Pastor Olumide Davies",
-    department: "Pastoral Team",
-    timeLabel: "8:38 AM · 4m ago",
-    mode: "Self Scan",
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDPwUgivxGuoYsRwqP65mD040MRegDekNwS5p5-I-U-vxlGBRuR-tVmj73QVuvNZgzVRhtQGJ2nYoGfjXhdSSbCqMVRv_6RQMxQ55Tixneg7BIb5lkb55z83XiKBYBM-S4kCWGpoRJvpBdGNzRTXVDP2IBKEIh6lLis_halP0ypiAY_admHOFsGg3cSygOES7u3dze113YGlFD82ccbpC5H-WCpBCnt_gDl-i65Xk0",
-  },
-];
-
-const QUICK_CANDIDATES = [
-  {
-    id: "65f000000000000000000010",
-    name: "Bro. Ayotunde Balogun",
-    meta: "0803 451 9022 · Men's Fellowship",
-    department: "Men's Fellowship",
-  },
-  {
-    id: "65f000000000000000000011",
-    name: "Deaconess Folashade Adeleke",
-    meta: "0802 119 7854 · Good Women",
-    department: "Women of Grace",
-  },
-];
+interface QuickCandidate {
+  id: string;
+  name: string;
+  meta: string;
+  department: string;
+}
 
 export default function UsherLiveAttendancePage(): ReactNode {
   const defaultServiceId = "65f000000000000000000100";
 
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
   const { data } = useQuery(USHER_LIVE_QUERY, {
-    variables: { serviceId: defaultServiceId },
+    variables: { serviceId: defaultServiceId, search: searchQuery || undefined },
     pollInterval: 5000,
     fetchPolicy: "network-only",
   });
@@ -155,14 +108,80 @@ export default function UsherLiveAttendancePage(): ReactNode {
   const [markManualMutation] = useMutation(MARK_MANUAL_MUTATION);
   const [registerGuestMutation] = useMutation(REGISTER_GUEST_MUTATION);
 
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [markedIds, setMarkedIds] = useState<string[]>([]);
-  const [feedItems, setFeedItems] = useState<FeedCard[]>(INITIAL_FEED);
+  const [feedItems, setFeedItems] = useState<FeedCard[]>([]);
 
-  const [totalCount, setTotalCount] = useState<number>(312);
-  const [memberCount, setMemberCount] = useState<number>(284);
-  const [guestCount, setGuestCount] = useState<number>(28);
-  const [manualCount, setManualCount] = useState<number>(14);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [memberCount, setMemberCount] = useState<number>(0);
+  const [guestCount, setGuestCount] = useState<number>(0);
+  const [manualCount, setManualCount] = useState<number>(0);
+
+  useEffect(() => {
+    const attendance = data?.serviceAttendance as
+      | {
+          totalCount: number;
+          memberCount: number;
+          guestCount: number;
+          manualCount: number;
+          records: Array<{
+            id: string;
+            memberName: string;
+            memberDepartment?: string | null;
+            isGuest: boolean;
+            invitedBy?: string | null;
+            method: string;
+            markedByUsherName?: string | null;
+            checkedInAt: string;
+          }>;
+        }
+      | undefined;
+    if (!attendance) return;
+    setTotalCount(attendance.totalCount);
+    setMemberCount(attendance.memberCount);
+    setGuestCount(attendance.guestCount);
+    setManualCount(attendance.manualCount);
+    setFeedItems(
+      attendance.records.map((r, idx) => ({
+        id: r.id,
+        name: r.memberName,
+        department: r.isGuest ? "First-time Visitor" : (r.memberDepartment ?? "Member"),
+        usherSubtext:
+          r.method === "MANUAL" && r.markedByUsherName ? `By ${r.markedByUsherName}` : undefined,
+        guestSubtext: r.isGuest
+          ? r.invitedBy
+            ? `Invited by: ${r.invitedBy}`
+            : "Assigned: Hospitality Desk"
+          : undefined,
+        timeLabel: new Date(r.checkedInAt).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        mode: r.isGuest ? "Guest Pass" : r.method === "MANUAL" ? "Manual Check" : "Self Scan",
+        justNow: idx === 0,
+        isGuest: r.isGuest,
+        initials: r.memberName
+          .split(" ")
+          .map((p) => p[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+      })),
+    );
+  }, [data?.serviceAttendance]);
+
+  const quickCandidates: QuickCandidate[] = (
+    (data?.members as Array<{
+      id: string;
+      fullName: string;
+      phone: string;
+      department?: string | null;
+    }>) ?? []
+  ).map((m) => ({
+    id: m.id,
+    name: m.fullName,
+    meta: `${m.phone} · ${m.department || "Member"}`,
+    department: m.department || "Member",
+  }));
 
   const [guestModalOpen, setGuestModalOpen] = useState<boolean>(false);
   const [guestName, setGuestName] = useState<string>("");
@@ -180,9 +199,7 @@ export default function UsherLiveAttendancePage(): ReactNode {
     }, 2800);
   };
 
-  const handleManualCheckIn = async (
-    candidate: (typeof QUICK_CANDIDATES)[number],
-  ): Promise<void> => {
+  const handleManualCheckIn = async (candidate: QuickCandidate): Promise<void> => {
     if (markedIds.includes(candidate.id)) return;
     setMarkedIds((prev) => [...prev, candidate.id]);
     setTotalCount((c) => c + 1);
@@ -205,7 +222,7 @@ export default function UsherLiveAttendancePage(): ReactNode {
       id: `manual-${Date.now()}`,
       name: candidate.name,
       department: candidate.department,
-      usherSubtext: "By Usher Emmanuel",
+      usherSubtext: `By ${(data?.me?.fullName as string | undefined) || "Usher"}`,
       timeLabel: "Just Now",
       mode: "Manual Check",
       justNow: true,
@@ -280,9 +297,9 @@ export default function UsherLiveAttendancePage(): ReactNode {
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </Link>
             <img
-              alt="ChurchConnect Brand Logo"
+              alt="RCCG JESUS HOUSE, OGBOMOSHO Brand Logo"
               className="h-7 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7NEpelKc3mHXSIAhc2iqycO8lUp6JVPLL0f8KwlMm6F-ko5kgCJF7GHgTucFRSa_u8gz3TRePbY_-508i43VqKH-4g4QNI88bF0luoqf6XQu4iNGXbm5wVNElC-reLG2MaaOPj6Zlp5leiT7pkKOujqWQio1OHzn6nA8gqV0ktKXL4-8YYIeYTHuA5eUjAsbqU71wQ6R3A8eZxx1FdL6MLt4_ZUWprTMDFGy1fhg"
+              src="/rccg-logo.png"
             />
             <h1 className="font-headline-sm text-headline-sm text-on-surface truncate">
               Usher Live
@@ -292,7 +309,7 @@ export default function UsherLiveAttendancePage(): ReactNode {
             <img
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXdtUknAYU-IO0tTam1ILADXhwrRpQxy57E_ggOmbSBIuQzPo17vxOAgv3mAZYrK2cW3DERhDkJuL78Zz17J7O7PJencrRLOiG5G18aMTUcKE5Vv8v2SJfCBHPdIfV7C8AP-YZOQ_wL1zEu0nMgnXfYh-iR2HCGcqoVm0kYtoVyDHX56Si4SfBe5H-SWTx0P0PQ5htRgdYO7CF45gopcR8eHi3MlrpcoPaNDL8BM"
+              src={(data?.me?.avatarUrl as string | undefined) || "/rccg-logo.png"}
             />
           </div>
         </div>
@@ -427,7 +444,7 @@ export default function UsherLiveAttendancePage(): ReactNode {
                     Offline/No Camera Mode
                   </span>
                 </div>
-                {QUICK_CANDIDATES.map((candidate) => {
+                {quickCandidates.map((candidate) => {
                   const isMarked = markedIds.includes(candidate.id);
                   return (
                     <div

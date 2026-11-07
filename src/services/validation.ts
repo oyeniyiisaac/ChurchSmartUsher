@@ -74,6 +74,8 @@ export const updateProfileInputSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   email: optionalEmailSchema,
   gender: z.enum(["Male", "Female"]).optional().nullable(),
+  avatarBase64: z.string().optional().nullable(),
+  avatarUrl: z.string().optional().nullable(),
   emergencyContact: z.string().trim().max(120).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
@@ -103,7 +105,7 @@ export const createServiceInputSchema = z.object({
   serviceType: z.enum(["SUNDAY", "MIDWEEK", "SPECIAL"]).default("SUNDAY"),
   serviceDate: z.string().trim().min(8, "Service date is required (YYYY-MM-DD)."),
   startTime: z.string().trim().min(1).default("8:30 AM"),
-  location: z.string().trim().min(1).default("Grace Sanctuary Auditorium"),
+  location: z.string().trim().min(1).default("RCCG JESUS HOUSE, OGBOMOSHO Auditorium"),
   usherStation: z.string().trim().min(1).default("Door A (Main Entrance)"),
 });
 

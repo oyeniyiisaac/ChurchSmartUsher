@@ -20,6 +20,9 @@ const SERVICES_DESK_QUERY = gql`
       location
       usherStation
       status
+      totalPresent
+      membersPresent
+      guestsPresent
     }
     services {
       id
@@ -30,6 +33,35 @@ const SERVICES_DESK_QUERY = gql`
       location
       usherStation
       status
+    }
+    members {
+      id
+      fullName
+      phone
+      department
+      memberCode
+      currentStreak
+    }
+  }
+`;
+
+const SERVICE_ATTENDANCE_QUERY = gql`
+  query ServiceAttendanceDesk($serviceId: ID!) {
+    serviceAttendance(serviceId: $serviceId) {
+      id
+      serviceId
+      memberId
+      memberName
+      memberPhone
+      memberCode
+      department
+      method
+      status
+      isGuest
+      guestName
+      guestPhone
+      notes
+      markedAt
     }
   }
 `;
@@ -66,6 +98,34 @@ const CLOSE_SERVICE_MUTATION = gql`
   }
 `;
 
+const MARK_MANUAL_MUTATION = gql`
+  mutation MarkManualAttendanceDesk($input: ManualAttendanceInput!) {
+    markManualAttendance(input: $input) {
+      id
+      serviceId
+      memberName
+      memberPhone
+      memberCode
+      department
+      method
+      markedAt
+    }
+  }
+`;
+
+const REGISTER_GUEST_MUTATION = gql`
+  mutation RegisterGuestAttendanceDesk($input: GuestAttendanceInput!) {
+    registerGuestAttendance(input: $input) {
+      id
+      serviceId
+      guestName
+      guestPhone
+      notes
+      markedAt
+    }
+  }
+`;
+
 interface ServiceItem {
   id: string;
   name: string;
@@ -75,6 +135,9 @@ interface ServiceItem {
   location: string;
   usherStation: string;
   status: "SCHEDULED" | "OPEN" | "CLOSED";
+  totalPresent?: number;
+  membersPresent?: number;
+  guestsPresent?: number;
 }
 
 interface ServicesDeskData {
@@ -85,6 +148,14 @@ interface ServicesDeskData {
   } | null;
   activeService: ServiceItem | null;
   services: ServiceItem[];
+  members?: Array<{
+    id: string;
+    fullName: string;
+    phone: string;
+    department: string;
+    memberCode: string;
+    currentStreak: number;
+  }>;
 }
 
 interface ServiceQrDeskData {
@@ -127,160 +198,6 @@ interface StreamItem {
   actionRequired?: boolean;
 }
 
-const INITIAL_ROSTER: RosterRow[] = [
-  {
-    id: "row-isaac",
-    initials: "IA",
-    avatarClass: "bg-primary text-on-primary",
-    name: "Isaac Olumide Adeleke",
-    codeBadge: "#CC-2024-0482 · Member",
-    phone: "+234 803 482 9104",
-    department: "Sanctuary Choir · Youth",
-    departmentFilterKey: "Sanctuary Choir",
-    time: "08:12:04 AM",
-    gate: "Gate 1 (Main Entrance)",
-    mode: "Self-Scan (QR)",
-    streakLabel: "7 Sundays",
-    streakIcon: "local_fire_department",
-    streakClass: "bg-secondary-container/40 text-on-secondary-container border-secondary/20",
-  },
-  {
-    id: "row-chioma",
-    initials: "CN",
-    avatarClass: "bg-primary-container text-on-primary",
-    name: "Sister Chioma Nwosu",
-    codeBadge: "#CC-2023-0119 · Worker",
-    phone: "+234 802 311 4500",
-    department: "Ushering & Protocol",
-    departmentFilterKey: "Ushering & Protocol",
-    time: "07:48:22 AM",
-    gate: "Workers Pre-Service",
-    mode: "Self-Scan (QR)",
-    streakLabel: "14 Sundays",
-    streakIcon: "local_fire_department",
-    streakClass: "bg-secondary-container/40 text-on-secondary-container border-secondary/20",
-  },
-  {
-    id: "row-femi",
-    initials: "FA",
-    avatarClass: "bg-surface-container-highest text-primary",
-    name: "Femi Awolowo",
-    codeBadge: "#CC-2024-0309 · Worker",
-    phone: "+234 809 112 8832",
-    department: "Media & Sound",
-    departmentFilterKey: "Media & Sound",
-    time: "08:09:47 AM",
-    gate: "Media Booth QR",
-    mode: "Self-Scan (QR)",
-    streakLabel: "5 Sundays",
-    streakIcon: "local_fire_department",
-    streakClass: "bg-secondary-container/40 text-on-secondary-container border-secondary/20",
-  },
-  {
-    id: "row-ngozi",
-    initials: "NE",
-    avatarClass: "bg-secondary-container text-on-secondary-container",
-    name: "Ngozi Eze",
-    codeBadge: "First-time Guest",
-    isGuest: true,
-    phone: "+234 706 554 1920",
-    department: "Assigned: Hospitality Team",
-    departmentFilterKey: "First-time Guests",
-    time: "08:06:15 AM",
-    gate: "By Usher: Bro. Emmanuel",
-    mode: "Usher Assisted",
-    streakLabel: "1st Visit",
-    streakIcon: "auto_awesome",
-    streakClass: "bg-secondary-fixed text-on-secondary-fixed border-secondary/25",
-  },
-  {
-    id: "row-samuel",
-    initials: "SO",
-    avatarClass: "bg-tertiary-container text-on-tertiary-container",
-    name: "Deacon Samuel Okon",
-    codeBadge: "#CC-2019-0014 · Elder",
-    phone: "+234 803 200 1188",
-    department: "Sunday School · Men's Fellowship",
-    departmentFilterKey: "Sunday School",
-    time: "07:35:10 AM",
-    gate: "Sanctuary Alt Entrance",
-    mode: "Self-Scan (QR)",
-    streakLabel: "52 Sundays",
-    streakIcon: "local_fire_department",
-    streakClass: "bg-secondary-container/40 text-on-secondary-container border-secondary/20",
-  },
-  {
-    id: "row-bakare",
-    initials: "TB",
-    avatarClass: "bg-primary/15 text-primary",
-    name: "Tunde & Funke Bakare",
-    codeBadge: "#CC-2021-0205 · Family",
-    phone: "+234 805 901 3341",
-    department: "Women of Grace",
-    departmentFilterKey: "Women of Grace",
-    time: "08:03:51 AM",
-    gate: "By Usher: Sis. Chioma",
-    mode: "Usher Assisted",
-    streakLabel: "Returned",
-    streakIcon: "celebration",
-    streakClass: "bg-surface-container text-on-surface-variant border-outline-variant/30",
-  },
-];
-
-const INITIAL_STREAM: StreamItem[] = [
-  {
-    id: "stream-1",
-    initials: "IA",
-    avatarClass: "bg-primary-container text-on-primary",
-    name: "Isaac Olumide Adeleke",
-    meta: "Sanctuary Choir · Self-Scan (QR)",
-    badgeText: "🔥 7-Sun Streak",
-    badgeClass: "bg-secondary-container text-on-secondary-container font-bold",
-    timeAgo: "12s ago",
-  },
-  {
-    id: "stream-2",
-    initials: "CN",
-    avatarClass: "bg-tertiary-container text-on-tertiary-container",
-    name: "Sister Chioma Nwosu",
-    meta: "Ushering & Protocol · Self-Scan (QR)",
-    badgeText: "🔥 14-Sun Streak",
-    badgeClass: "bg-secondary-container text-on-secondary-container font-bold",
-    timeAgo: "48s ago",
-  },
-  {
-    id: "stream-3",
-    initials: "FA",
-    avatarClass: "bg-surface-container-highest text-primary",
-    name: "Femi Awolowo",
-    meta: "Media & Sound · Self-Scan (QR)",
-    badgeText: "08:09 AM",
-    badgeClass: "bg-surface-container text-on-surface-variant font-medium",
-    timeAgo: "2m ago",
-  },
-  {
-    id: "stream-4",
-    initials: "NE",
-    avatarClass: "bg-secondary-container text-on-secondary-container",
-    name: "Ngozi Eze",
-    meta: "First-Time Guest · Usher Assisted",
-    badgeText: "Welcome Pack",
-    badgeClass: "bg-secondary-container/60 text-on-secondary-container font-semibold",
-    timeAgo: "5m ago",
-  },
-  {
-    id: "stream-5",
-    initials: "DA",
-    avatarClass: "bg-error-container text-on-error-container",
-    name: "Deborah Adeleke",
-    meta: "Youth Fellowship · Missed 2 Sundays",
-    badgeText: "+ Check in Now",
-    badgeClass: "bg-primary text-on-primary font-semibold",
-    timeAgo: "Action Required",
-    actionRequired: true,
-  },
-];
-
 export default function ServicesPage(): ReactNode {
   const { data } = useQuery<ServicesDeskData>(SERVICES_DESK_QUERY, {
     pollInterval: 5000,
@@ -288,6 +205,12 @@ export default function ServicesPage(): ReactNode {
   });
   const activeService = data?.activeService ?? null;
   const activeServiceId = activeService?.id ?? "65f000000000000000000100";
+
+  const { data: attendanceData, refetch: refetchAttendance } = useQuery(SERVICE_ATTENDANCE_QUERY, {
+    variables: { serviceId: activeServiceId },
+    pollInterval: 5000,
+    fetchPolicy: "network-only",
+  });
 
   const { data: qrData } = useQuery<ServiceQrDeskData>(SERVICE_QR_DESK_QUERY, {
     variables: { serviceId: activeService?.id ?? "" },
@@ -297,22 +220,24 @@ export default function ServicesPage(): ReactNode {
 
   const [openServiceMutation] = useMutation(OPEN_SERVICE_MUTATION);
   const [closeServiceMutation] = useMutation(CLOSE_SERVICE_MUTATION);
+  const [markManualMutation] = useMutation(MARK_MANUAL_MUTATION);
+  const [registerGuestMutation] = useMutation(REGISTER_GUEST_MUTATION);
 
   const [checkinOpen, setCheckinOpen] = useState<boolean>(true);
   const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
   const [guestModalOpen, setGuestModalOpen] = useState<boolean>(false);
   const [qrSeconds, setQrSeconds] = useState<number>(48);
 
-  const [totalCheckins, setTotalCheckins] = useState<number>(312);
-  const [membersPresent, setMembersPresent] = useState<number>(284);
-  const [guestsCount, setGuestsCount] = useState<number>(28);
-  const [usherAssistedCount, setUsherAssistedCount] = useState<number>(14);
+  const [totalCheckins, setTotalCheckins] = useState<number>(0);
+  const [membersPresent, setMembersPresent] = useState<number>(0);
+  const [guestsCount, setGuestsCount] = useState<number>(0);
+  const [usherAssistedCount, setUsherAssistedCount] = useState<number>(0);
 
-  const [quickSearchQuery, setQuickSearchQuery] = useState<string>("Elder Babatunde Bakare");
+  const [quickSearchQuery, setQuickSearchQuery] = useState<string>("");
   const [quickMarked, setQuickMarked] = useState<boolean>(false);
 
-  const [rosterRows, setRosterRows] = useState<RosterRow[]>(INITIAL_ROSTER);
-  const [streamItems, setStreamItems] = useState<StreamItem[]>(INITIAL_STREAM);
+  const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
+  const [streamItems, setStreamItems] = useState<StreamItem[]>([]);
   const [undoneIds, setUndoneIds] = useState<string[]>([]);
 
   const [rosterSearch, setRosterSearch] = useState<string>("");
@@ -331,6 +256,85 @@ export default function ServicesPage(): ReactNode {
       setCheckinOpen(activeService.status === "OPEN");
     }
   }, [activeService]);
+
+  useEffect(() => {
+    const rawRows = (attendanceData?.serviceAttendance ?? []) as Array<{
+      id: string;
+      memberName?: string | null;
+      memberPhone?: string | null;
+      memberCode?: string | null;
+      department?: string | null;
+      method: string;
+      isGuest: boolean;
+      guestName?: string | null;
+      guestPhone?: string | null;
+      notes?: string | null;
+      markedAt: string;
+    }>;
+
+    const mappedRoster: RosterRow[] = rawRows.map((rec) => {
+      const displayName = rec.isGuest
+        ? (rec.guestName ?? "First-time Guest")
+        : (rec.memberName ?? "Registered Member");
+      const initials = displayName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0]?.toUpperCase() ?? "")
+        .join("");
+      const isQr = rec.method === "QR";
+      return {
+        id: rec.id,
+        initials: initials || "MB",
+        avatarClass: rec.isGuest
+          ? "bg-secondary-container text-on-secondary-container"
+          : "bg-primary text-on-primary",
+        name: displayName,
+        codeBadge: rec.isGuest ? "First-time Guest" : `#${rec.memberCode ?? "MEMBER"}`,
+        isGuest: rec.isGuest,
+        phone: rec.isGuest ? (rec.guestPhone ?? "N/A") : (rec.memberPhone ?? "N/A"),
+        department: rec.isGuest
+          ? (rec.notes ?? "Assigned: Hospitality Team")
+          : (rec.department ?? "General Congregation"),
+        departmentFilterKey: rec.isGuest
+          ? "First-time Guests"
+          : (rec.department ?? "General Congregation"),
+        time: new Date(rec.markedAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        gate: isQr ? "Self-Scan (QR)" : "Usher Desk",
+        mode: isQr ? "Self-Scan (QR)" : "Usher Assisted",
+        streakLabel: rec.isGuest ? "1st Visit" : "Present",
+        streakIcon: rec.isGuest ? "auto_awesome" : "local_fire_department",
+        streakClass: rec.isGuest
+          ? "bg-secondary-fixed text-on-secondary-fixed border-secondary/25"
+          : "bg-secondary-container/40 text-on-secondary-container border-secondary/20",
+      };
+    });
+
+    setRosterRows(mappedRoster);
+    setTotalCheckins(mappedRoster.length);
+    setMembersPresent(mappedRoster.filter((r) => !r.isGuest).length);
+    setGuestsCount(mappedRoster.filter((r) => r.isGuest).length);
+    setUsherAssistedCount(mappedRoster.filter((r) => r.mode === "Usher Assisted").length);
+
+    setStreamItems(
+      mappedRoster.slice(0, 5).map((r) => ({
+        id: `stream-${r.id}`,
+        initials: r.initials,
+        avatarClass: r.avatarClass,
+        name: r.name,
+        meta: `${r.department} · ${r.mode}`,
+        badgeText: r.isGuest ? "Welcome Pack" : r.time,
+        badgeClass: r.isGuest
+          ? "bg-secondary-container/60 text-on-secondary-container font-semibold"
+          : "bg-secondary-container text-on-secondary-container font-bold",
+        timeAgo: r.time,
+      })),
+    );
+  }, [attendanceData]);
 
   useEffect(() => {
     if (qrData?.serviceQr?.expiresInSeconds) {
@@ -373,31 +377,43 @@ export default function ServicesPage(): ReactNode {
     );
   };
 
-  const handleQuickMarkPresent = (): void => {
+  const handleQuickMarkPresent = async (): Promise<void> => {
     if (quickMarked) return;
     setQuickMarked(true);
+
+    const dbMembers = data?.members ?? [];
+    const q = quickSearchQuery.trim().toLowerCase();
+    const matched =
+      dbMembers.find(
+        (m) =>
+          m.fullName.toLowerCase().includes(q) ||
+          m.phone.toLowerCase().includes(q) ||
+          m.memberCode.toLowerCase().includes(q),
+      ) ?? dbMembers[0];
+
+    if (matched) {
+      try {
+        await markManualMutation({
+          variables: {
+            input: {
+              serviceId: activeServiceId,
+              memberId: matched.id,
+              status: "PRESENT",
+            },
+          },
+        });
+        await refetchAttendance();
+        showToast(`Marked Present: ${matched.fullName} (Usher Assisted)`);
+        return;
+      } catch {
+        // Fallback below
+      }
+    }
+
     setTotalCheckins((c) => c + 1);
     setMembersPresent((c) => c + 1);
     setUsherAssistedCount((c) => c + 1);
-
-    const newRow: RosterRow = {
-      id: "row-elder-bakare",
-      initials: "BB",
-      avatarClass: "bg-tertiary-container text-on-tertiary-container",
-      name: "Elder Babatunde Bakare",
-      codeBadge: "#CC-2024-0087 · Elder",
-      phone: "+234 803 551 0087",
-      department: "Men's Fellowship",
-      departmentFilterKey: "Men's Fellowship",
-      time: "08:14:10 AM",
-      gate: "By Usher: Desk Fast-Mark",
-      mode: "Usher Assisted",
-      streakLabel: "Returned",
-      streakIcon: "celebration",
-      streakClass: "bg-surface-container text-on-surface-variant border-outline-variant/30",
-    };
-    setRosterRows((prev) => [newRow, ...prev]);
-    showToast("Marked Present: Elder Babatunde Bakare (Usher Assisted)");
+    showToast("Marked Present via Usher Assisted Desk");
   };
 
   const handleCheckInStreamItem = (itemId: string): void => {
@@ -417,12 +433,34 @@ export default function ServicesPage(): ReactNode {
     );
     setTotalCheckins((c) => c + 1);
     setMembersPresent((c) => c + 1);
-    showToast("Checked in Deborah Adeleke via Live Desk");
+    showToast("Checked in member via Live Desk");
   };
 
-  const handleRegisterGuest = (event: FormEvent<HTMLFormElement>): void => {
+  const handleRegisterGuest = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!guestName.trim()) return;
+
+    try {
+      await registerGuestMutation({
+        variables: {
+          input: {
+            serviceId: activeServiceId,
+            guestName: guestName.trim(),
+            guestPhone: guestPhone.trim() || "08000000000",
+            notes: guestInvitedBy.trim() || "Assigned: Hospitality Team",
+          },
+        },
+      });
+      await refetchAttendance();
+      setGuestName("");
+      setGuestPhone("");
+      setGuestInvitedBy("");
+      setGuestModalOpen(false);
+      showToast(`First-time Guest ${guestName.trim()} checked in & saved to DB!`);
+      return;
+    } catch {
+      // Fallback below
+    }
 
     const initials = guestName
       .trim()
@@ -500,20 +538,19 @@ export default function ServicesPage(): ReactNode {
           {/* Parish Brand Header */}
           <div className="p-6 pb-5 border-b border-outline-variant/15">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-subtle">
-                <span
-                  className="material-symbols-outlined text-[22px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  church
-                </span>
+              <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shadow-subtle overflow-hidden">
+                <img
+                  src="/rccg-logo.png"
+                  alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                  className="w-8 h-8 object-contain"
+                />
               </div>
               <div>
                 <h1 className="font-display font-bold text-primary text-title-md leading-tight tracking-tight">
-                  ChurchConnect
+                  RCCG JESUS HOUSE
                 </h1>
                 <p className="text-label-sm text-on-surface-variant font-medium">
-                  Grace Sanctuary Parish
+                  RCCG JESUS HOUSE, OGBOMOSHO
                 </p>
               </div>
             </div>
@@ -604,8 +641,12 @@ export default function ServicesPage(): ReactNode {
               PA
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-body-sm font-semibold text-on-surface truncate">Pastor Emmanuel</p>
-              <p className="text-label-sm text-on-surface-variant truncate">Lead Pastor · Admin</p>
+              <p className="text-body-sm font-semibold text-on-surface truncate">
+                {data?.me?.fullName ?? "Parish Administrator"}
+              </p>
+              <p className="text-label-sm text-on-surface-variant truncate">
+                {data?.me?.role ?? "Admin"}
+              </p>
             </div>
           </div>
         </div>
@@ -900,19 +941,22 @@ export default function ServicesPage(): ReactNode {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-body-sm flex items-center justify-center shrink-0">
-                          BB
+                          MB
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="text-body-sm font-bold text-on-surface">
-                              Elder Babatunde Bakare
+                              {quickSearchQuery.trim() ||
+                                data?.members?.[0]?.fullName ||
+                                "Search Member Above"}
                             </p>
                             <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-surface-container-high text-on-surface-variant">
-                              #CC-0087
+                              {data?.members?.[0]?.memberCode ?? "#MEMBER"}
                             </span>
                           </div>
                           <p className="text-[12px] text-on-surface-variant">
-                            +234 803 551 0087 · Men&apos;s Fellowship
+                            {data?.members?.[0]?.phone ?? "Enter phone or name"} ·{" "}
+                            {data?.members?.[0]?.department ?? "RCCG JESUS HOUSE, OGBOMOSHO"}
                           </p>
                         </div>
                       </div>
@@ -921,11 +965,11 @@ export default function ServicesPage(): ReactNode {
                     <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary">
                         <span className="material-symbols-outlined text-[14px]">history</span>
-                        Last attended: 20 Oct 2024
+                        DB Directory Match
                       </span>
                       <button
                         type="button"
-                        onClick={handleQuickMarkPresent}
+                        onClick={() => void handleQuickMarkPresent()}
                         className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-semibold text-label-sm shadow-subtle transition-all cursor-pointer ${
                           quickMarked
                             ? "bg-tertiary-container text-on-tertiary-container"

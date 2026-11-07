@@ -10,6 +10,7 @@ const DIRECTORY_QUERY = gql`
       id
       fullName
       role
+      avatarUrl
     }
     departments {
       id
@@ -36,6 +37,7 @@ const DIRECTORY_QUERY = gql`
       notes
       currentStreak
       longestStreak
+      avatarUrl
     }
   }
 `;
@@ -82,167 +84,32 @@ interface DirectoryRow {
   activities: string[];
 }
 
-const DEFAULT_STITCH_ROWS: DirectoryRow[] = [
-  {
-    id: "mem-isaac",
-    name: "Isaac Olumide Adeleke",
-    verified: true,
-    code: "CC-2024-0482",
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBDMGQ7FvNb6MnEUYhltjFV9RB5i4Ifqp80Fy4eLxf1iz_LqRVDbFZQuV5bLrbL30FIO6HERBrYGGJ9k_NHm42duFheuBy4dJXXYdt-XS4SoeEqtvGFOqufKNhTCnhWqEd8m2uyz85JGq5ELSJnOm58VORiJuT8m9X-ynyBqiZtW8BX9p4kjl2TVlk9Suii1J3BieUZiDwYjJWLi4TT444K5oUP4NeIWQ2raHXAlOM",
-    phone: "+234 803 456 7890",
-    phoneChannel: "WhatsApp Verified",
-    primaryUnit: "Sanctuary Choir",
-    unitRole: "Tenor Lead",
-    streakText: "7 wks",
-    streakIcon: "local_fire_department",
-    streakBadgeClass: "bg-secondary-fixed text-on-secondary-fixed font-bold shadow-xs",
-    streakIconClass: "text-secondary",
-    lastCheckedInTime: "Today 8:42 AM",
-    lastCheckedInTimeClass: "font-medium text-tertiary",
-    lastCheckedInSub: "Self-QR • Foyer A",
-    lastCheckedInSubClass: "text-on-surface-variant",
-    statusLabel: "Active Member",
-    statusBadgeClass: "bg-tertiary-fixed text-on-tertiary-fixed font-semibold",
-    statusDotClass: "bg-on-tertiary-fixed",
-    bestStreak: 14,
-    email: "isaac.adeleke@churchconnect.ng",
-    notes:
-      "Checked in regarding final exams preparation. Isaac confirmed he will be available to sing in the choir for the upcoming Annual Thanksgiving service.",
-    activities: ["Youth Fellowship", "Sunday School Class 4"],
-  },
-  {
-    id: "mem-chioma",
-    name: "Sister Chioma Nwosu",
-    code: "CC-2024-0219",
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBJxP7q--jYI_7uS2h34_oBg7i0Q3LPJEbM784G_3JKixOPMIagZPWJXM83ifZgkbH7ruKfVjBymPFbIhYoVNF5WdTor2eYeBleGHpPcD2OcXE1abB4qhC5E0u8PonHCNsVWdjf7sPu466S_fc5CUq1vEIs4A5qRrsr-0KTe9TzpwOnPWF9dVADhZhPBoJmDwuM3VzTTMY5U-V3KH_1PeTz7XNDQdHDSRIZ8mYyXTs",
-    phone: "+234 813 908 4455",
-    phoneChannel: "WhatsApp",
-    primaryUnit: "Ushering & Protocol",
-    unitRole: "Head Usher",
-    unitRoleClass: "text-secondary font-medium",
-    streakText: "14 wks",
-    streakIcon: "emoji_events",
-    streakBadgeClass: "bg-secondary-fixed text-on-secondary-fixed font-bold shadow-xs",
-    streakIconClass: "text-secondary",
-    lastCheckedInTime: "Today 8:41 AM",
-    lastCheckedInTimeClass: "font-medium text-tertiary",
-    lastCheckedInSub: "Desk Sync • Foyer",
-    lastCheckedInSubClass: "text-on-surface-variant",
-    statusLabel: "Active Member",
-    statusBadgeClass: "bg-tertiary-fixed text-on-tertiary-fixed font-semibold",
-    statusDotClass: "bg-on-tertiary-fixed",
-    bestStreak: 14,
-    email: "chioma.nwosu@churchconnect.ng",
-    notes: "Coordinating Door A and Door B ushers for Sunday First Service.",
-    activities: ["Women of Grace", "Midweek Bible Study"],
-  },
-  {
-    id: "mem-babatunde",
-    name: "Elder Babatunde Bakare",
-    code: "CC-2024-0087",
-    initials: "BB",
-    initialsClass: "bg-surface-container-high text-primary",
-    phone: "+234 802 987 6543",
-    phoneChannel: "Phone only",
-    primaryUnit: "Men's Fellowship",
-    unitRole: "Elder Council",
-    streakText: "0 wks (was 8)",
-    streakIcon: "heart_broken",
-    streakBadgeClass: "bg-surface-container-high text-on-surface-variant",
-    streakIconClass: "text-error",
-    lastCheckedInTime: "20 Oct 2024",
-    lastCheckedInTimeClass: "text-error font-medium",
-    lastCheckedInSub: "Absent 4 Sundays",
-    lastCheckedInSubClass: "text-error font-semibold",
-    statusLabel: "Needs Follow-Up",
-    statusBadgeClass: "bg-secondary-fixed text-on-secondary-fixed font-semibold",
-    statusDotClass: "bg-secondary",
-    bestStreak: 8,
-    email: "babatunde.bakare@churchconnect.ng",
-    notes: "Scheduled pastoral visitation call by Elder Council Welfare Team.",
-    activities: ["Midweek Bible Study"],
-  },
-  {
-    id: "mem-ngozi",
-    name: "Ngozi Eze",
-    code: "CC-2024-0731",
-    avatarUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuD9cblNU1oRe9UNLgjJJXb-vvL-oHdcrU3eAsH1nHe-pMPhQsXxf-JNcXWYjG6K-PckHvFPsGQFWqsx5tE5-XNTwChu4y2Q6h0hf6_BCzl50NJufEWL8X2SHoYyK2cha0dK-9aU3XkQirpBK3L4tOrNJB5rN8Pzi56AIOCsY_s23pGekpH4P0Wzxt-nTpeg1tv6kiuuwZ25jghip_l23az0QHSz1UB4HBEUZvqt2Bs",
-    phone: "+234 812 443 2211",
-    phoneChannel: "WhatsApp",
-    primaryUnit: "Guest Reception",
-    unitRole: "First-time Guest",
-    streakText: "1st Visit",
-    streakIcon: "waving_hand",
-    streakBadgeClass: "bg-primary-fixed text-on-primary-fixed font-semibold",
-    streakIconClass: "text-primary",
-    lastCheckedInTime: "Today 8:39 AM",
-    lastCheckedInTimeClass: "font-medium text-tertiary",
-    lastCheckedInSub: "Front Welcome Desk",
-    lastCheckedInSubClass: "text-on-surface-variant",
-    statusLabel: "Guest Pass",
-    statusBadgeClass: "bg-primary-fixed text-on-primary-fixed font-semibold",
-    statusDotClass: "bg-primary",
-    bestStreak: 1,
-    email: "ngozi.eze@churchconnect.ng",
-    notes: "Welcomed at Front Guest Lounge after First Service.",
-    activities: ["Believers Baptism Class"],
-  },
-  {
-    id: "mem-femi",
-    name: "Femi Awolowo",
-    code: "CC-2024-0390",
-    initials: "FA",
-    initialsClass: "bg-secondary-fixed text-on-secondary-fixed",
-    phone: "+234 701 556 7788",
-    phoneChannel: "WhatsApp",
-    primaryUnit: "Media & Sound",
-    unitRole: "Broadcast Tech",
-    streakText: "9 wks",
-    streakIcon: "local_fire_department",
-    streakBadgeClass: "bg-secondary-fixed text-on-secondary-fixed font-bold",
-    streakIconClass: "text-secondary",
-    lastCheckedInTime: "Today 8:05 AM",
-    lastCheckedInTimeClass: "font-medium text-tertiary",
-    lastCheckedInSub: "Tech Booth Scan",
-    lastCheckedInSubClass: "text-on-surface-variant",
-    statusLabel: "Active Member",
-    statusBadgeClass: "bg-tertiary-fixed text-on-tertiary-fixed font-semibold",
-    statusDotClass: "bg-on-tertiary-fixed",
-    bestStreak: 11,
-    email: "femi.awolowo@churchconnect.ng",
-    notes: "Lead projection & livestream engineer for Sunday First Service.",
-    activities: ["Youth Fellowship", "Sunday School Class 4"],
-  },
-  {
-    id: "mem-deborah",
-    name: "Deborah Adeleke",
-    code: "CC-2024-0412",
-    initials: "DA",
-    initialsClass: "bg-surface-container-high text-primary",
-    phone: "+234 803 123 4567",
-    phoneChannel: "SMS Alert",
-    primaryUnit: "Sanctuary Choir",
-    unitRole: "Alto Member",
-    streakText: "0 wks (was 5)",
-    streakIcon: "heart_broken",
-    streakBadgeClass: "bg-surface-container-high text-on-surface-variant",
-    streakIconClass: "text-error",
-    lastCheckedInTime: "27 Oct 2024",
-    lastCheckedInTimeClass: "text-error font-medium",
-    lastCheckedInSub: "Absent 3 Sundays",
-    lastCheckedInSubClass: "text-error font-semibold",
-    statusLabel: "Needs Follow-Up",
-    statusBadgeClass: "bg-secondary-fixed text-on-secondary-fixed font-semibold",
-    statusDotClass: "bg-secondary",
-    bestStreak: 5,
-    email: "deborah.adeleke@churchconnect.ng",
-    notes: "Choir welfare coordinator reached out via SMS.",
-    activities: ["Sunday School Class 4"],
-  },
-];
+const EMPTY_MEMBER_ROW: DirectoryRow = {
+  id: "empty-member",
+  name: "No Member Selected",
+  code: "CC-2026-0000",
+  initials: "MB",
+  initialsClass: "bg-surface-container-high text-primary",
+  phone: "+234 --- --- ----",
+  phoneChannel: "WhatsApp",
+  primaryUnit: "General Congregation",
+  unitRole: "Member",
+  streakText: "0 wks",
+  streakIcon: "local_fire_department",
+  streakBadgeClass: "bg-surface-container-high text-on-surface-variant",
+  streakIconClass: "text-outline",
+  lastCheckedInTime: "No check-in yet",
+  lastCheckedInTimeClass: "text-on-surface-variant",
+  lastCheckedInSub: "Awaiting first attendance",
+  lastCheckedInSubClass: "text-outline",
+  statusLabel: "Active Member",
+  statusBadgeClass: "bg-tertiary-fixed text-on-tertiary-fixed font-semibold",
+  statusDotClass: "bg-on-tertiary-fixed",
+  bestStreak: 0,
+  email: "member@rccgjesushouse.org",
+  notes: "Register or select a member from the directory to view pastoral care details.",
+  activities: [],
+};
 
 export default function MembersDirectoryPage(): ReactNode {
   const { data, refetch } = useQuery(DIRECTORY_QUERY, {
@@ -250,32 +117,106 @@ export default function MembersDirectoryPage(): ReactNode {
   });
   const [assignAffiliations, { loading: assigning }] = useMutation(ASSIGN_AFFILIATIONS_MUTATION);
 
-  const [searchQuery, setSearchQuery] = useState<string>("Isaac Olumide");
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("Sanctuary Choir");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("Active Regular");
-  const [selectedRowId, setSelectedRowId] = useState<string>("mem-isaac");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("ALL");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("ALL");
+  const [selectedRowId, setSelectedRowId] = useState<string>("");
   const [assignModalOpen, setAssignModalOpen] = useState<boolean>(false);
-  const [chosenDept, setChosenDept] = useState<string>("Sanctuary Choir");
-  const [chosenActivities, setChosenActivities] = useState<string[]>([
-    "Youth Fellowship",
-    "Sunday School Class 4",
-  ]);
+  const [chosenDept, setChosenDept] = useState<string>("General Congregation");
+  const [chosenActivities, setChosenActivities] = useState<string[]>([]);
   const [customOverrides, setCustomOverrides] = useState<
     Record<string, { primaryUnit: string; activities: string[] }>
   >({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const rows: DirectoryRow[] = DEFAULT_STITCH_ROWS.map((row) => {
-    const override = customOverrides[row.id];
-    if (!override) return row;
+  const rawMembers = (data?.members ?? []) as Array<{
+    id: string;
+    fullName: string;
+    phone: string;
+    email?: string | null;
+    role: string;
+    status: string;
+    department: string;
+    activities: string[];
+    memberCode: string;
+    notes?: string | null;
+    currentStreak: number;
+    longestStreak: number;
+    avatarUrl?: string | null;
+  }>;
+
+  const mappedRows: DirectoryRow[] = rawMembers.map((m) => {
+    const initials = m.fullName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? "")
+      .join("");
+    const isGuest = m.status === "FIRST_TIME_GUEST";
+    const isFollowUp = m.status === "NEEDS_FOLLOW_UP";
+    const statusLabel: DirectoryRow["statusLabel"] = isGuest
+      ? "Guest Pass"
+      : isFollowUp
+        ? "Needs Follow-Up"
+        : "Active Member";
+    const override = customOverrides[m.id];
+
     return {
-      ...row,
-      primaryUnit: override.primaryUnit,
-      activities: override.activities,
+      id: m.id,
+      name: m.fullName,
+      verified: m.role === "ADMIN" || m.role === "USHER",
+      code: m.memberCode,
+      avatarUrl: m.avatarUrl ?? undefined,
+      initials: initials || "MB",
+      initialsClass: "bg-surface-container-high text-primary",
+      phone: m.phone,
+      phoneChannel: "WhatsApp Verified",
+      primaryUnit: override?.primaryUnit ?? (m.department || "General Congregation"),
+      unitRole: m.role,
+      streakText: `${m.currentStreak} wks`,
+      streakIcon: m.currentStreak >= 10 ? "emoji_events" : "local_fire_department",
+      streakBadgeClass: "bg-secondary-fixed text-on-secondary-fixed font-bold shadow-xs",
+      streakIconClass: "text-secondary",
+      lastCheckedInTime: m.currentStreak > 0 ? "Verified" : "Pending",
+      lastCheckedInTimeClass: "font-medium text-tertiary",
+      lastCheckedInSub: "DB Record",
+      lastCheckedInSubClass: "text-on-surface-variant",
+      statusLabel,
+      statusBadgeClass: isFollowUp
+        ? "bg-secondary-fixed text-on-secondary-fixed font-semibold"
+        : isGuest
+          ? "bg-primary-fixed text-on-primary-fixed font-semibold"
+          : "bg-tertiary-fixed text-on-tertiary-fixed font-semibold",
+      statusDotClass: isFollowUp ? "bg-secondary" : isGuest ? "bg-primary" : "bg-on-tertiary-fixed",
+      bestStreak: m.longestStreak,
+      email: m.email || "Not provided",
+      notes: m.notes || "Active member in RCCG JESUS HOUSE, OGBOMOSHO.",
+      activities: override?.activities ?? (m.activities || []),
     };
   });
 
-  const selectedMember = rows.find((r) => r.id === selectedRowId) ?? rows[0];
+  const rows: DirectoryRow[] = mappedRows.filter((r) => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      r.name.toLowerCase().includes(q) ||
+      r.phone.toLowerCase().includes(q) ||
+      r.code.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q);
+    const matchesDept = selectedDeptFilter === "ALL" || r.primaryUnit === selectedDeptFilter;
+    const matchesStatus =
+      selectedStatusFilter === "ALL" ||
+      (selectedStatusFilter === "Active Regular" && r.statusLabel === "Active Member") ||
+      (selectedStatusFilter === "First-Time Guest" && r.statusLabel === "Guest Pass") ||
+      (selectedStatusFilter === "Needs Follow-Up" && r.statusLabel === "Needs Follow-Up");
+    return matchesSearch && matchesDept && matchesStatus;
+  });
+
+  const selectedMember = rows.find((r) => r.id === selectedRowId) ?? rows[0] ?? EMPTY_MEMBER_ROW;
+  const totalMembersCount = rawMembers.length;
+  const activeRegularsCount = rawMembers.filter((m) => m.status === "ACTIVE").length;
+  const firstTimeGuestsCount = rawMembers.filter((m) => m.status === "FIRST_TIME_GUEST").length;
+  const followUpCount = rawMembers.filter((m) => m.status === "NEEDS_FOLLOW_UP").length;
 
   function openAssignModal(): void {
     setChosenDept(selectedMember.primaryUnit);
@@ -334,15 +275,19 @@ export default function MembersDirectoryPage(): ReactNode {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col justify-between">
         <div className="flex flex-col">
           <div className="px-space-lg pt-space-lg pb-space-md flex items-center gap-space-sm">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-on-primary text-[22px]">church</span>
+            <div className="w-10 h-10 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src="/rccg-logo.png"
+                alt="RCCG JESUS HOUSE, OGBOMOSHO"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-headline-sm text-headline-sm text-primary tracking-tight truncate">
-                ChurchConnect
+                RCCG JESUS HOUSE
               </span>
               <span className="font-label-sm text-label-sm text-secondary truncate">
-                Grace Sanctuary Parish - Lagos
+                RCCG JESUS HOUSE, OGBOMOSHO
               </span>
             </div>
           </div>
@@ -466,10 +411,10 @@ export default function MembersDirectoryPage(): ReactNode {
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="font-label-md text-label-md text-on-surface leading-tight">
-                  Pastor Emmanuel
+                  {data?.me?.fullName ?? "Parish Administrator"}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant leading-tight">
-                  Admin Lead
+                  {data?.me?.role ?? "Admin Lead"}
                 </span>
               </div>
             </div>
@@ -502,7 +447,7 @@ export default function MembersDirectoryPage(): ReactNode {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
                 <div className="flex flex-col gap-space-xs">
                   <div className="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
-                    <span>Grace Sanctuary Parish</span>
+                    <span>RCCG JESUS HOUSE, OGBOMOSHO</span>
                     <span className="material-symbols-outlined text-[14px]">chevron_right</span>
                     <span>Parish Registry</span>
                     <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -512,8 +457,8 @@ export default function MembersDirectoryPage(): ReactNode {
                     Members Management &amp; Congregation Directory
                   </h1>
                   <p className="font-body-sm text-body-sm text-on-surface-variant max-w-3xl">
-                    Directory of 1,248 registered worshippers, departmental assignments, and
-                    pastoral care status across Grace Sanctuary Parish.
+                    Directory of {totalMembersCount} registered worshippers, departmental
+                    assignments, and pastoral care status across RCCG JESUS HOUSE, OGBOMOSHO.
                   </p>
                 </div>
                 {/* Action Buttons */}
@@ -555,10 +500,10 @@ export default function MembersDirectoryPage(): ReactNode {
                     </span>
                     <div className="flex items-baseline gap-space-xs">
                       <span className="font-display-lg text-display-lg text-primary leading-none">
-                        1,248
+                        {totalMembersCount}
                       </span>
                       <span className="font-label-sm text-label-sm text-tertiary font-semibold">
-                        +18 this mo
+                        Live DB
                       </span>
                     </div>
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
@@ -578,10 +523,12 @@ export default function MembersDirectoryPage(): ReactNode {
                     </span>
                     <div className="flex items-baseline gap-space-xs">
                       <span className="font-display-lg text-display-lg text-on-surface leading-none">
-                        1,084
+                        {activeRegularsCount}
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold">
-                        87%
+                        {totalMembersCount > 0
+                          ? `${Math.round((activeRegularsCount / totalMembersCount) * 100)}%`
+                          : "0%"}
                       </span>
                     </div>
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
@@ -601,14 +548,14 @@ export default function MembersDirectoryPage(): ReactNode {
                     </span>
                     <div className="flex items-baseline gap-space-xs">
                       <span className="font-display-lg text-display-lg text-secondary leading-none">
-                        34
+                        {firstTimeGuestsCount}
                       </span>
                       <span className="font-label-sm text-label-sm text-secondary font-semibold">
                         This Month
                       </span>
                     </div>
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      22 assigned to Follow-up Unit
+                      Assigned to Follow-up Unit
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed z-10">
@@ -624,7 +571,7 @@ export default function MembersDirectoryPage(): ReactNode {
                     </span>
                     <div className="flex items-baseline gap-space-xs">
                       <span className="font-display-lg text-display-lg text-error leading-none">
-                        18
+                        {followUpCount}
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
                         Urgent
@@ -970,8 +917,9 @@ export default function MembersDirectoryPage(): ReactNode {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-sm text-on-surface-variant font-label-sm text-label-sm">
                     <div className="flex items-center gap-space-xs">
                       <span>
-                        Showing <strong className="text-on-surface">1–6</strong> of{" "}
-                        <strong className="text-on-surface">1,248</strong> registered members
+                        Showing <strong className="text-on-surface">{rows.length}</strong> of{" "}
+                        <strong className="text-on-surface">{totalMembersCount}</strong> registered
+                        members
                       </span>
                     </div>
                     <div className="flex items-center gap-space-xs">
