@@ -367,6 +367,22 @@ export const typeDefs = `#graphql
     code: String!
   }
 
+  type OtpDispatchResult {
+    phone: String!
+    maskedPhone: String!
+    channel: String!
+    purpose: String!
+    expiresAt: String!
+    code: String!
+    whatsappDeepLink: String
+    deliveryNote: String!
+  }
+
+  type PasswordResetResult {
+    success: Boolean!
+    message: String!
+  }
+
   input UpdateParishSettingsInput {
     parishName: String
     denomination: String
@@ -423,5 +439,8 @@ export const typeDefs = `#graphql
     updateParishSettings(input: UpdateParishSettingsInput!): ParishSettings!
     requestCheckinCode(serviceId: ID!, channel: String): CheckinCodeDispatchResult!
     verifyCheckinCode(serviceId: ID!, code: String!): MarkPresentResult!
+    requestAuthOtp(phone: String!, channel: String, purpose: String): OtpDispatchResult!
+    verifyLoginOtp(phone: String!, code: String!, returnTo: String): AuthPayload!
+    resetPasswordWithOtp(phone: String!, code: String!, newPassword: String!): PasswordResetResult!
   }
 `;

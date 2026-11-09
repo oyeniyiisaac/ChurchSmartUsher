@@ -79,6 +79,12 @@ import {
   requestCheckinCode,
   verifyCheckinCode,
 } from "@/services/checkin-code";
+import {
+  type OtpDispatchResult,
+  requestAuthOtp,
+  resetPasswordWithOtp,
+  verifyLoginOtp,
+} from "@/services/auth-otp";
 import type { ServiceType, UserRole } from "@/db/models";
 import type {
   ActivityInput,
@@ -462,6 +468,27 @@ export const resolvers = {
     ): Promise<MarkPresentResult> => {
       const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
       return verifyCheckinCode(authenticated, args);
+    },
+
+    requestAuthOtp: async (
+      _parent: unknown,
+      args: { phone: string; channel?: string; purpose?: string },
+    ): Promise<OtpDispatchResult> => {
+      return requestAuthOtp(args);
+    },
+
+    verifyLoginOtp: async (
+      _parent: unknown,
+      args: { phone: string; code: string; returnTo?: string },
+    ): Promise<AuthPayload> => {
+      return verifyLoginOtp(args);
+    },
+
+    resetPasswordWithOtp: async (
+      _parent: unknown,
+      args: { phone: string; code: string; newPassword: string },
+    ): Promise<{ success: boolean; message: string }> => {
+      return resetPasswordWithOtp(args);
     },
   },
 

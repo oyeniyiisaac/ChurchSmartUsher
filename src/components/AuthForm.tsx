@@ -35,6 +35,44 @@ const REGISTER_MUTATION = gql`
   }
 `;
 
+const REQUEST_AUTH_OTP_MUTATION = gql`
+  mutation RequestAuthOtp($phone: String!, $channel: String, $purpose: String) {
+    requestAuthOtp(phone: $phone, channel: $channel, purpose: $purpose) {
+      phone
+      maskedPhone
+      channel
+      purpose
+      expiresAt
+      code
+      whatsappDeepLink
+      deliveryNote
+    }
+  }
+`;
+
+const VERIFY_LOGIN_OTP_MUTATION = gql`
+  mutation VerifyLoginOtp($phone: String!, $code: String!, $returnTo: String) {
+    verifyLoginOtp(phone: $phone, code: $code, returnTo: $returnTo) {
+      redirectTo
+      member {
+        id
+        fullName
+        phone
+        role
+      }
+    }
+  }
+`;
+
+const RESET_PASSWORD_WITH_OTP_MUTATION = gql`
+  mutation ResetPasswordWithOtp($phone: String!, $code: String!, $newPassword: String!) {
+    resetPasswordWithOtp(phone: $phone, code: $code, newPassword: $newPassword) {
+      success
+      message
+    }
+  }
+`;
+
 const PUBLIC_DEPARTMENTS_QUERY = gql`
   query PublicDepartments {
     departments {
@@ -70,6 +108,38 @@ interface AuthMutationData {
   };
 }
 
+interface RequestAuthOtpData {
+  requestAuthOtp: {
+    phone: string;
+    maskedPhone: string;
+    channel: string;
+    purpose: string;
+    expiresAt: string;
+    code: string;
+    whatsappDeepLink?: string;
+    deliveryNote: string;
+  };
+}
+
+interface VerifyLoginOtpData {
+  verifyLoginOtp: {
+    redirectTo: string;
+    member: {
+      id: string;
+      fullName: string;
+      phone: string;
+      role: string;
+    };
+  };
+}
+
+interface ResetPasswordData {
+  resetPasswordWithOtp: {
+    success: boolean;
+    message: string;
+  };
+}
+
 interface PublicDepartmentsData {
   departments: Array<{
     id: string;
@@ -83,6 +153,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
   const searchParams = useSearchParams();
   const returnToParam = getSafeReturnTo(searchParams.get("returnTo"));
 
+  // Common authentication state
   const [loginMethod, setLoginMethod] = useState<"otp" | "password">("password");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>("");
@@ -93,13 +164,48 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
   const [department, setDepartment] = useState<string>("General Member");
   const [consentGiven, setConsentGiven] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
+  // Instant OTP state
+  const [otpChannel, setOtpChannel] = useState<"WHATSAPP" | "SMS">("WHATSAPP");
+  const [otpStep, setOtpStep] = useState<"REQUEST" | "VERIFY">("REQUEST");
+  const [otpCode, setOtpCode] = useState<string>("");
+  const [otpDispatchedInfo, setOtpDispatchedInfo] = useState<
+    RequestAuthOtpData["requestAuthOtp"] | null
+  >(null);
+
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
+  const [forgotStep, setForgotStep] = useState<"REQUEST" | "RESET">("REQUEST");
+  const [forgotChannel, setForgotChannel] = useState<"WHATSAPP" | "SMS">("WHATSAPP");
+  const [forgotPhone, setForgotPhone] = useState<string>("");
+  const [forgotCode, setForgotCode] = useState<string>("");
+  const [forgotNewPassword, setForgotNewPassword] = useState<string>("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState<string>("");
+  const [forgotShowPassword, setForgotShowPassword] = useState<boolean>(false);
+  const [forgotDispatchedInfo, setForgotDispatchedInfo] = useState<
+    RequestAuthOtpData["requestAuthOtp"] | null
+  >(null);
+  const [forgotSuccessMessage, setForgotSuccessMessage] = useState<string | null>(null);
 
   const { data: deptData } = useQuery<PublicDepartmentsData>(PUBLIC_DEPARTMENTS_QUERY);
   const [loginMutation, { loading: loginLoading }] = useMutation<AuthMutationData>(LOGIN_MUTATION);
   const [registerMutation, { loading: registerLoading }] =
     useMutation<AuthMutationData>(REGISTER_MUTATION);
+  const [requestAuthOtpMutation, { loading: requestOtpLoading }] =
+    useMutation<RequestAuthOtpData>(REQUEST_AUTH_OTP_MUTATION);
+  const [verifyLoginOtpMutation, { loading: verifyOtpLoading }] =
+    useMutation<VerifyLoginOtpData>(VERIFY_LOGIN_OTP_MUTATION);
+  const [resetPasswordMutation, { loading: resetPasswordLoading }] = useMutation<ResetPasswordData>(
+    RESET_PASSWORD_WITH_OTP_MUTATION,
+  );
 
-  const isLoading = loginLoading || registerLoading;
+  const isLoading =
+    loginLoading ||
+    registerLoading ||
+    requestOtpLoading ||
+    verifyOtpLoading ||
+    resetPasswordLoading;
 
   const baseDepartmentChoices = [
     { label: "General Member", icon: "favorite" },
@@ -123,12 +229,141 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
     return true;
   });
 
+  async function handleRequestInstantOtp(): Promise<void> {
+    setErrorMessage(null);
+    setInfoMessage(null);
+    if (!phone || phone.trim().length < 8) {
+      setErrorMessage("Please enter a valid phone number.");
+      return;
+    }
+
+    try {
+      const res = await requestAuthOtpMutation({
+        variables: {
+          phone,
+          channel: otpChannel,
+          purpose: "LOGIN",
+        },
+      });
+
+      if (res.data?.requestAuthOtp) {
+        setOtpDispatchedInfo(res.data.requestAuthOtp);
+        setOtpStep("VERIFY");
+        setInfoMessage(
+          `Instant code dispatched to ${res.data.requestAuthOtp.maskedPhone} via ${res.data.requestAuthOtp.channel}.`,
+        );
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to send instant login code.");
+    }
+  }
+
+  async function handleVerifyInstantOtp(): Promise<void> {
+    setErrorMessage(null);
+    if (!otpCode || otpCode.trim().length !== 6) {
+      setErrorMessage("Please enter the complete 6-digit confirmation code.");
+      return;
+    }
+
+    try {
+      const target = returnToParam || "/dashboard";
+      const res = await verifyLoginOtpMutation({
+        variables: {
+          phone,
+          code: otpCode.trim(),
+          returnTo: target,
+        },
+      });
+
+      const redirectTo = returnToParam || res.data?.verifyLoginOtp?.redirectTo || "/dashboard";
+      window.location.assign(redirectTo);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Verification failed. Please check the code.",
+      );
+    }
+  }
+
+  async function handleRequestForgotOtp(): Promise<void> {
+    setErrorMessage(null);
+    setForgotSuccessMessage(null);
+    if (!forgotPhone || forgotPhone.trim().length < 8) {
+      setErrorMessage("Please enter your account phone number.");
+      return;
+    }
+
+    try {
+      const res = await requestAuthOtpMutation({
+        variables: {
+          phone: forgotPhone,
+          channel: forgotChannel,
+          purpose: "PASSWORD_RESET",
+        },
+      });
+
+      if (res.data?.requestAuthOtp) {
+        setForgotDispatchedInfo(res.data.requestAuthOtp);
+        setForgotStep("RESET");
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to send password reset code.");
+    }
+  }
+
+  async function handleResetPasswordWithOtp(): Promise<void> {
+    setErrorMessage(null);
+    if (!forgotCode || forgotCode.trim().length !== 6) {
+      setErrorMessage("Please enter the 6-digit reset code.");
+      return;
+    }
+    if (!forgotNewPassword || forgotNewPassword.length < 8) {
+      setErrorMessage("New password must be at least 8 characters long.");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setErrorMessage("Passwords do not match. Please verify both fields.");
+      return;
+    }
+
+    try {
+      const res = await resetPasswordMutation({
+        variables: {
+          phone: forgotPhone,
+          code: forgotCode.trim(),
+          newPassword: forgotNewPassword,
+        },
+      });
+
+      if (res.data?.resetPasswordWithOtp?.success) {
+        setForgotSuccessMessage(res.data.resetPasswordWithOtp.message);
+        setTimeout(() => {
+          setPhone(forgotPhone);
+          setPassword(forgotNewPassword);
+          setShowForgotPassword(false);
+          setForgotStep("REQUEST");
+          setForgotCode("");
+          setForgotNewPassword("");
+          setForgotConfirmPassword("");
+          setLoginMethod("password");
+        }, 1800);
+      }
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Password reset failed. Please check the code.",
+      );
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
 
     if (mode === "login" && loginMethod === "otp") {
-      setLoginMethod("password");
+      if (otpStep === "REQUEST") {
+        await handleRequestInstantOtp();
+      } else {
+        await handleVerifyInstantOtp();
+      }
       return;
     }
 
@@ -258,7 +493,6 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
-                  type="text"
                 />
               </div>
             </div>
@@ -266,34 +500,34 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
             <div className="flex flex-col gap-1.5">
               <label
                 className="font-label-md text-label-md text-on-surface flex items-center justify-between"
-                htmlFor="phoneNumber"
+                htmlFor="phone"
               >
                 <span>Phone Number</span>
                 <span className="font-label-sm text-label-sm text-primary">Required</span>
               </label>
-              <div className="relative flex items-center">
-                <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant pointer-events-none text-[20px]">
-                  phone
-                </span>
-                <input
-                  className="w-full h-[52px] pl-11 pr-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
-                  id="phoneNumber"
-                  placeholder="+234 803 000 0000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  type="tel"
-                />
+              <div className="flex items-center gap-2">
+                <div className="h-[52px] px-3 bg-surface-container-lowest rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface shadow-sm">
+                  <span className="material-symbols-outlined text-[20px] text-primary">flag</span>
+                  <span className="font-body-md text-body-md font-medium">+234</span>
+                </div>
+                <div className="relative flex-1">
+                  <input
+                    className="w-full h-[52px] px-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
+                    id="phone"
+                    placeholder="0803 000 0000"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    type="tel"
+                  />
+                </div>
               </div>
-              <p className="font-label-sm text-label-sm text-on-surface-variant px-1">
-                Used for fast service check-in verification
-              </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label
                 className="font-label-md text-label-md text-on-surface flex items-center justify-between"
-                htmlFor="emailAddress"
+                htmlFor="email"
               >
                 <span>Email Address</span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -306,77 +540,86 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 </span>
                 <input
                   className="w-full h-[52px] pl-11 pr-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
-                  id="emailAddress"
-                  placeholder="you@example.com"
+                  id="email"
+                  placeholder="name@example.com"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  type="email"
                 />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-label-md text-label-md text-on-surface">Gender</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGender("Male")}
+                  className={`h-12 rounded-xl font-label-md text-label-md flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm ${
+                    gender === "Male"
+                      ? "bg-primary-container text-on-primary ring-2 ring-primary"
+                      : "bg-surface-container-lowest text-on-surface"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px]">man</span>
+                  <span>Male</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender("Female")}
+                  className={`h-12 rounded-xl font-label-md text-label-md flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm ${
+                    gender === "Female"
+                      ? "bg-primary-container text-on-primary ring-2 ring-primary"
+                      : "bg-surface-container-lowest text-on-surface"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px]">woman</span>
+                  <span>Female</span>
+                </button>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label
                 className="font-label-md text-label-md text-on-surface flex items-center justify-between"
-                htmlFor="registerPassword"
+                htmlFor="password"
               >
                 <span>Account Password</span>
-                <span className="font-label-sm text-label-sm text-primary">Required</span>
+                <span className="font-label-sm text-label-sm text-primary">Min 8 characters</span>
               </label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant pointer-events-none text-[20px]">
                   lock
                 </span>
                 <input
-                  className="w-full h-[52px] pl-11 pr-4 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
-                  id="registerPassword"
-                  placeholder="Minimum 8 characters"
+                  className="w-full h-[52px] pl-11 pr-12 bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-xl shadow-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary"
+                  id="password"
+                  placeholder="Create password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
-                  type="password"
                 />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="font-label-md text-label-md text-on-surface">Gender</label>
-              <div className="grid grid-cols-2 gap-3" id="gender-group">
                 <button
-                  className={`h-[50px] rounded-xl flex items-center justify-center gap-2 font-label-lg text-label-lg transition-all shadow-sm cursor-pointer ${
-                    gender === "Male"
-                      ? "bg-primary-container text-on-primary"
-                      : "bg-surface-container-lowest text-on-surface"
-                  }`}
-                  onClick={() => setGender("Male")}
+                  className="absolute right-3 p-2 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                  onClick={() => setShowPassword((prev) => !prev)}
                   type="button"
+                  aria-label="Toggle password visibility"
                 >
-                  <span className="material-symbols-outlined text-[20px]">male</span>
-                  <span>Male</span>
-                </button>
-                <button
-                  className={`h-[50px] rounded-xl flex items-center justify-center gap-2 font-label-lg text-label-lg transition-all shadow-sm cursor-pointer ${
-                    gender === "Female"
-                      ? "bg-primary-container text-on-primary"
-                      : "bg-surface-container-lowest text-on-surface"
-                  }`}
-                  onClick={() => setGender("Female")}
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[20px]">female</span>
-                  <span>Female</span>
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label className="font-label-md text-label-md text-on-surface">
-                  Fellowship &amp; Department
+                  Church Unit / Department
                 </label>
                 <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  Choose one
+                  Select one
                 </span>
               </div>
               <div className="flex flex-wrap gap-2" id="dept-pills">
@@ -489,7 +732,8 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 Welcome to your church family portal
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant mt-space-xs leading-relaxed">
-                Sign in to confirm attendance, track your consistency, and save service memories.
+                Sign in with your phone to confirm attendance, track your consistency, and save
+                service memories.
               </p>
             </div>
 
@@ -529,7 +773,7 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
             </div>
           </div>
 
-          {/* Right Column on Desktop: Sign In Form Card */}
+          {/* Right Column on Desktop: Sign In / Forgot Password Card */}
           <div className="lg:col-span-7 flex flex-col">
             {returnToParam && (
               <div
@@ -551,133 +795,516 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
               </div>
             )}
 
-            <div className="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-lg mb-space-lg">
-              <form className="flex flex-col gap-space-md" onSubmit={(e) => void handleSubmit(e)}>
-                <div className="grid grid-cols-2 p-1 bg-surface-container rounded-lg">
-                  <button
-                    className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                      loginMethod === "otp"
-                        ? "bg-surface-container-lowest text-primary shadow-sm"
-                        : "text-on-surface-variant"
-                    }`}
-                    id="tab-otp"
-                    onClick={() => setLoginMethod("otp")}
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">sms</span>
-                    <span>Instant Code</span>
-                  </button>
-                  <button
-                    className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                      loginMethod === "password"
-                        ? "bg-surface-container-lowest text-primary shadow-sm"
-                        : "text-on-surface-variant"
-                    }`}
-                    id="tab-pass"
-                    onClick={() => setLoginMethod("password")}
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">lock</span>
-                    <span>Password</span>
-                  </button>
-                </div>
+            {infoMessage && (
+              <div
+                className="flex items-center gap-2 rounded-xl bg-secondary-fixed/40 text-on-secondary-fixed-variant px-space-md py-space-sm mb-space-md font-label-sm text-label-sm"
+                role="status"
+              >
+                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>{infoMessage}</span>
+              </div>
+            )}
 
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    className="font-label-md text-label-md text-on-surface-variant"
-                    htmlFor="phone-input"
-                  >
-                    Phone Number
-                  </label>
+            {/* FORGOT PASSWORD VIEW */}
+            {showForgotPassword ? (
+              <div className="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-lg mb-space-lg border border-outline-variant/30">
+                <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4">
                   <div className="flex items-center gap-2">
-                    <div className="h-[52px] px-3 bg-surface-container-low rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface">
-                      <span className="material-symbols-outlined text-[20px] text-primary">
-                        flag
-                      </span>
-                      <span className="font-body-md text-body-md font-medium">+234</span>
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                        expand_more
-                      </span>
-                    </div>
-                    <div className="relative flex-1">
-                      <input
-                        className="w-full h-[52px] px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
-                        id="phone-input"
-                        placeholder="0803 000 0000"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        required
-                        type="tel"
-                      />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setForgotStep("REQUEST");
+                        setErrorMessage(null);
+                      }}
+                      className="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors"
+                      aria-label="Back to Login"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                    </button>
+                    <div>
+                      <h3 className="font-headline-sm text-headline-sm text-on-surface">
+                        Reset Password
+                      </h3>
+                      <p className="font-body-xs text-xs text-on-surface-variant">
+                        Free instant recovery via WhatsApp or SMS
+                      </p>
                     </div>
                   </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary-container text-on-primary">
+                    Security
+                  </span>
                 </div>
 
-                {loginMethod === "password" ? (
-                  <div className="flex flex-col gap-1.5" id="password-container">
-                    <div className="flex items-center justify-between">
+                {forgotSuccessMessage ? (
+                  <div className="p-4 rounded-xl bg-secondary-fixed/30 text-on-surface text-center flex flex-col items-center gap-2 py-6">
+                    <span className="material-symbols-outlined text-secondary text-4xl">
+                      task_alt
+                    </span>
+                    <p className="font-headline-sm text-headline-sm">{forgotSuccessMessage}</p>
+                    <p className="text-xs text-on-surface-variant">Switching to Sign In...</p>
+                  </div>
+                ) : forgotStep === "REQUEST" ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
                       <label
                         className="font-label-md text-label-md text-on-surface-variant"
-                        htmlFor="password-input"
+                        htmlFor="forgot-phone"
                       >
-                        Account Password
+                        Enter Registered Phone Number
                       </label>
-                      <span className="font-label-sm text-label-sm text-primary flex items-center gap-0.5">
-                        60-day session active
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="h-[52px] px-3 bg-surface-container-low rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface">
+                          <span className="material-symbols-outlined text-[20px] text-primary">
+                            flag
+                          </span>
+                          <span className="font-body-md text-body-md font-medium">+234</span>
+                        </div>
+                        <input
+                          className="flex-1 h-[52px] px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
+                          id="forgot-phone"
+                          placeholder="0803 000 0000"
+                          value={forgotPhone}
+                          onChange={(e) => setForgotPhone(e.target.value)}
+                          type="tel"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="relative flex items-center">
-                      <input
-                        className="w-full h-[52px] pl-4 pr-12 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
-                        id="password-input"
-                        placeholder="Enter your church passkey"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        type={showPassword ? "text" : "password"}
-                      />
-                      <button
-                        className="absolute right-3 p-2 text-on-surface-variant hover:text-on-surface cursor-pointer"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        type="button"
-                        aria-label="Toggle password visibility"
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-label-md text-label-md text-on-surface-variant">
+                        Select Free Dispatch Method
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setForgotChannel("WHATSAPP")}
+                          className={`h-11 rounded-xl text-body-sm font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+                            forgotChannel === "WHATSAPP"
+                              ? "bg-[#25D366]/15 border-[#25D366] text-[#128C7E] font-semibold"
+                              : "bg-surface-container-low border-transparent text-on-surface"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">chat</span>
+                          <span>WhatsApp (Free)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForgotChannel("SMS")}
+                          className={`h-11 rounded-xl text-body-sm font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+                            forgotChannel === "SMS"
+                              ? "bg-primary-container border-primary text-on-primary font-semibold"
+                              : "bg-surface-container-low border-transparent text-on-surface"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">sms</span>
+                          <span>SMS Message</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleRequestForgotOtp()}
+                      disabled={isLoading}
+                      className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">send</span>
+                      <span>{isLoading ? "Generating Code..." : "Send Reset Code"}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {forgotDispatchedInfo && (
+                      <div className="p-3 bg-secondary-fixed/20 border border-secondary-fixed/30 rounded-xl text-on-surface text-body-sm flex flex-col gap-2">
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">
+                            verified
+                          </span>
+                          <div>
+                            <p className="font-semibold text-label-sm">
+                              {forgotDispatchedInfo.deliveryNote}
+                            </p>
+                            <p className="text-xs text-on-surface-variant">
+                              Code expires in 10 minutes.
+                            </p>
+                          </div>
+                        </div>
+
+                        {forgotDispatchedInfo.whatsappDeepLink && (
+                          <a
+                            href={forgotDispatchedInfo.whatsappDeepLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full h-10 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chat</span>
+                            <span>Open WhatsApp Reset Code</span>
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        className="font-label-md text-label-md text-on-surface-variant"
+                        htmlFor="reset-code"
                       >
-                        <span className="material-symbols-outlined text-[20px]" id="eye-icon">
-                          {showPassword ? "visibility_off" : "visibility"}
-                        </span>
+                        6-Digit Reset Code
+                      </label>
+                      <input
+                        id="reset-code"
+                        type="text"
+                        maxLength={6}
+                        inputMode="numeric"
+                        placeholder="······"
+                        className="w-full h-12 text-center tracking-[0.4em] font-mono text-xl font-bold rounded-xl bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary shadow-inner"
+                        value={forgotCode}
+                        onChange={(e) => setForgotCode(e.target.value.replace(/[^\d]/g, ""))}
+                        required
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        className="font-label-md text-label-md text-on-surface-variant"
+                        htmlFor="new-password"
+                      >
+                        New Password (min 8 characters)
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          id="new-password"
+                          className="w-full h-12 pl-4 pr-12 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary shadow-inner"
+                          placeholder="Enter new strong password"
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          type={forgotShowPassword ? "text" : "password"}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 p-1.5 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                          onClick={() => setForgotShowPassword((prev) => !prev)}
+                        >
+                          <span className="material-symbols-outlined text-[20px]">
+                            {forgotShowPassword ? "visibility_off" : "visibility"}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        className="font-label-md text-label-md text-on-surface-variant"
+                        htmlFor="confirm-password"
+                      >
+                        Confirm New Password
+                      </label>
+                      <input
+                        id="confirm-password"
+                        className="w-full h-12 px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary shadow-inner"
+                        placeholder="Re-enter new password"
+                        value={forgotConfirmPassword}
+                        onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                        type={forgotShowPassword ? "text" : "password"}
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleResetPasswordWithOtp()}
+                      disabled={isLoading}
+                      className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-60"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">lock_reset</span>
+                      <span>
+                        {isLoading ? "Saving New Password..." : "Update Password & Continue"}
+                      </span>
+                    </button>
+
+                    <div className="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-outline-variant/20">
+                      <button
+                        type="button"
+                        onClick={() => void handleRequestForgotOtp()}
+                        className="text-primary hover:underline cursor-pointer"
+                      >
+                        Resend Code
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForgotStep("REQUEST")}
+                        className="text-on-surface-variant hover:underline cursor-pointer"
+                      >
+                        Change Number
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div
-                    className="flex items-start gap-2 bg-surface-container-low rounded-lg p-space-sm text-on-surface-variant"
-                    id="otp-hint"
-                  >
-                    <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">
-                      verified_user
-                    </span>
-                    <p className="font-body-sm text-body-sm">
-                      We will send a 6-digit confirmation code via SMS or WhatsApp to this number.
-                    </p>
-                  </div>
                 )}
+              </div>
+            ) : (
+              /* STANDARD LOGIN CARD */
+              <div className="flex flex-col w-full bg-surface-container-lowest rounded-xl shadow-sm p-space-lg mb-space-lg">
+                <form className="flex flex-col gap-space-md" onSubmit={(e) => void handleSubmit(e)}>
+                  <div className="grid grid-cols-2 p-1 bg-surface-container rounded-lg">
+                    <button
+                      className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        loginMethod === "otp"
+                          ? "bg-surface-container-lowest text-primary shadow-sm"
+                          : "text-on-surface-variant"
+                      }`}
+                      id="tab-otp"
+                      onClick={() => {
+                        setLoginMethod("otp");
+                        setErrorMessage(null);
+                      }}
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">sms</span>
+                      <span>Instant Code</span>
+                    </button>
+                    <button
+                      className={`h-10 rounded-md font-label-md text-label-md flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        loginMethod === "password"
+                          ? "bg-surface-container-lowest text-primary shadow-sm"
+                          : "text-on-surface-variant"
+                      }`}
+                      id="tab-pass"
+                      onClick={() => {
+                        setLoginMethod("password");
+                        setErrorMessage(null);
+                      }}
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">lock</span>
+                      <span>Password</span>
+                    </button>
+                  </div>
 
-                <button
-                  className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-1 cursor-pointer disabled:opacity-60"
-                  disabled={isLoading}
-                  type="submit"
-                >
-                  <span className="material-symbols-outlined text-[20px]">login</span>
-                  <span id="sign-in-label">
-                    {isLoading
-                      ? "Signing In..."
-                      : loginMethod === "otp"
-                        ? "Get One-Time Code"
-                        : "Sign In"}
-                  </span>
-                </button>
-              </form>
-            </div>
+                  {/* Phone input row */}
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      className="font-label-md text-label-md text-on-surface-variant"
+                      htmlFor="phone-input"
+                    >
+                      Phone Number
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="h-[52px] px-3 bg-surface-container-low rounded-xl flex items-center gap-1.5 shrink-0 text-on-surface">
+                        <span className="material-symbols-outlined text-[20px] text-primary">
+                          flag
+                        </span>
+                        <span className="font-body-md text-body-md font-medium">+234</span>
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+                          expand_more
+                        </span>
+                      </div>
+                      <div className="relative flex-1">
+                        <input
+                          className="w-full h-[52px] px-4 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
+                          id="phone-input"
+                          placeholder="0803 000 0000"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          required
+                          type="tel"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Conditional Method Rows */}
+                  {loginMethod === "password" ? (
+                    <div className="flex flex-col gap-1.5" id="password-container">
+                      <div className="flex items-center justify-between">
+                        <label
+                          className="font-label-md text-label-md text-on-surface-variant"
+                          htmlFor="password-input"
+                        >
+                          Account Password
+                        </label>
+                        <span className="font-label-sm text-label-sm text-primary flex items-center gap-0.5">
+                          60-day session active
+                        </span>
+                      </div>
+                      <div className="relative flex items-center">
+                        <input
+                          className="w-full h-[52px] pl-4 pr-12 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary shadow-inner"
+                          id="password-input"
+                          placeholder="Enter your church passkey"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          type={showPassword ? "text" : "password"}
+                        />
+                        <button
+                          className="absolute right-3 p-2 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          type="button"
+                          aria-label="Toggle password visibility"
+                        >
+                          <span className="material-symbols-outlined text-[20px]" id="eye-icon">
+                            {showPassword ? "visibility_off" : "visibility"}
+                          </span>
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between text-xs mt-1">
+                        <span className="text-on-surface-variant">Need to recover access?</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowForgotPassword(true);
+                            setForgotStep("REQUEST");
+                            setForgotPhone(phone);
+                            setErrorMessage(null);
+                          }}
+                          className="text-primary font-medium hover:underline cursor-pointer"
+                        >
+                          Forgot Password?
+                        </button>
+                      </div>
+                    </div>
+                  ) : otpStep === "REQUEST" ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-label-md text-label-md text-on-surface-variant">
+                          Instant Verification Channel
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setOtpChannel("WHATSAPP")}
+                            className={`h-11 rounded-xl text-body-sm font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+                              otpChannel === "WHATSAPP"
+                                ? "bg-[#25D366]/15 border-[#25D366] text-[#128C7E] font-semibold"
+                                : "bg-surface-container-low border-transparent text-on-surface"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chat</span>
+                            <span>WhatsApp (Free)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOtpChannel("SMS")}
+                            className={`h-11 rounded-xl text-body-sm font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+                              otpChannel === "SMS"
+                                ? "bg-primary-container border-primary text-on-primary font-semibold"
+                                : "bg-surface-container-low border-transparent text-on-surface"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">sms</span>
+                            <span>SMS Message</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div
+                        className="flex items-start gap-2 bg-surface-container-low rounded-lg p-space-sm text-on-surface-variant"
+                        id="otp-hint"
+                      >
+                        <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">
+                          verified_user
+                        </span>
+                        <p className="font-body-sm text-body-sm">
+                          Free direct code delivery with zero delay. No password memorization
+                          required!
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {otpDispatchedInfo && (
+                        <div className="p-3 bg-secondary-fixed/20 border border-secondary-fixed/30 rounded-xl text-on-surface text-body-sm flex flex-col gap-2">
+                          <div className="flex items-start gap-2">
+                            <span className="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">
+                              verified
+                            </span>
+                            <div>
+                              <p className="font-semibold text-label-sm">
+                                {otpDispatchedInfo.deliveryNote}
+                              </p>
+                              <p className="text-xs text-on-surface-variant">
+                                Code expires in 10 minutes.
+                              </p>
+                            </div>
+                          </div>
+
+                          {otpDispatchedInfo.whatsappDeepLink && (
+                            <a
+                              href={otpDispatchedInfo.whatsappDeepLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full h-11 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-1"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chat</span>
+                              <span>Open WhatsApp Code (Free)</span>
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-1.5">
+                        <label
+                          className="font-label-md text-label-md text-on-surface-variant"
+                          htmlFor="otp-input"
+                        >
+                          Enter 6-Digit Instant Code
+                        </label>
+                        <input
+                          id="otp-input"
+                          type="text"
+                          maxLength={6}
+                          inputMode="numeric"
+                          placeholder="······"
+                          className="w-full h-14 text-center tracking-[0.5em] font-mono text-2xl font-bold rounded-xl bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary shadow-inner"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/[^\d]/g, ""))}
+                          required
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-on-surface-variant pt-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleRequestInstantOtp()}
+                          className="text-primary hover:underline cursor-pointer"
+                        >
+                          Resend Code
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOtpStep("REQUEST")}
+                          className="text-on-surface-variant hover:underline cursor-pointer"
+                        >
+                          Change Number
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    className="w-full h-[52px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-1 cursor-pointer disabled:opacity-60"
+                    disabled={isLoading}
+                    type="submit"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {loginMethod === "otp" && otpStep === "REQUEST" ? "send" : "login"}
+                    </span>
+                    <span id="sign-in-label">
+                      {isLoading
+                        ? "Processing..."
+                        : loginMethod === "otp"
+                          ? otpStep === "REQUEST"
+                            ? "Send Instant Code"
+                            : "Verify & Sign In"
+                          : "Sign In"}
+                    </span>
+                  </button>
+                </form>
+              </div>
+            )}
 
             <div className="lg:hidden w-full rounded-xl bg-secondary-fixed/30 p-space-md flex items-center justify-between shadow-sm mb-space-xl">
               <div className="flex items-center gap-3">
