@@ -171,6 +171,52 @@ describe("Slice 6 — Service Photos with 7-Day Expiry & Physical File Purge", (
     expect(afterApprove.some((p) => p.id === pendingPhoto.id)).toBe(true);
   });
 
+  it("uploads service videos and pictures from media and displays both in member gallery", async () => {
+    const now = new Date("2026-11-17T10:00:00.000Z");
+
+    const videoUpload = await uploadServicePhoto({
+      title: "Opening Prayer & Worship Highlight",
+      fileName: "service_worship_highlight.mp4",
+      albumKey: "today",
+      albumTitle: "Sunday Service - RCCG JESUS HOUSE, OGBOMOSHO",
+      serviceDate: "2026-11-17",
+      photographer: "Media Technical Unit",
+      mediaType: "VIDEO",
+      tags: ["Worship", "Video Highlight"],
+      status: "PUBLISHED",
+      uploadedAt: now,
+      fileContentBase64: Buffer.from("fake-mp4-video-data-bytes").toString("base64"),
+    });
+
+    expect(videoUpload.mediaType).toBe("VIDEO");
+    expect(videoUpload.fileName.endsWith(".mp4")).toBe(true);
+
+    const activeMedia = await listActivePhotos({ now });
+    const foundVideo = activeMedia.find((m) => m.id === videoUpload.id);
+    expect(foundVideo).toBeDefined();
+    expect(foundVideo?.mediaType).toBe("VIDEO");
+    expect(foundVideo?.title).toBe("Opening Prayer & Worship Highlight");
+
+    // Member context query returns both photos and videos
+    const memberCtx = {
+      member: {
+        id: "mem-2",
+        fullName: "Brother Oluwaseun",
+        phone: "08031112222",
+        role: "MEMBER" as const,
+        department: "Ushering",
+        activities: ["Sunday Worship Service"],
+        memberCode: "MEM-2026-0002",
+        currentStreak: 2,
+        longestStreak: 5,
+      },
+    };
+
+    const memberGallery = await resolvers.Query.servicePhotos({}, { albumKey: "all" }, memberCtx);
+    expect(memberGallery.some((m) => m.mediaType === "VIDEO")).toBe(true);
+    expect(memberGallery.some((m) => m.mediaType === "PHOTO")).toBe(true);
+  });
+
   it("enforces role guards on GraphQL photo queries and mutations", async () => {
     const memberCtx = {
       member: {

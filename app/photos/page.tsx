@@ -45,6 +45,7 @@ const SERVICE_PHOTOS_QUERY = gql`
       serviceDate
       photographer
       imageUrl
+      mediaType
       fileSizeLabel
       daysLeftLabel
       daysLeftCount
@@ -61,6 +62,7 @@ interface GalleryPhotoItem {
   serviceDate: string;
   photographer: string;
   imageUrl: string;
+  mediaType: "PHOTO" | "VIDEO";
   alt: string;
   badgeText: string;
   badgeVariant: "today" | "neutral" | "amber" | "urgent";
@@ -88,29 +90,35 @@ export default function PhotosGalleryPage(): ReactElement {
       serviceDate: string;
       photographer: string;
       imageUrl: string;
+      mediaType?: string;
       daysLeftLabel: string;
       daysLeftCount: number;
     }>) ?? []
-  ).map((p) => ({
-    id: p.id,
-    title: p.title,
-    fileName: p.fileName || `${p.title}.jpg`,
-    albumKey: p.albumKey || "today",
-    albumTitle: p.albumTitle || "Sunday Service — RCCG JESUS HOUSE, OGBOMOSHO",
-    serviceDate: p.serviceDate || "Recent Service",
-    photographer: p.photographer || "Media Unit",
-    imageUrl: p.imageUrl,
-    alt: p.title,
-    badgeText: p.daysLeftLabel,
-    badgeVariant:
-      p.daysLeftLabel === "Today" || p.daysLeftCount >= 7
-        ? "today"
-        : p.daysLeftCount <= 1
-          ? "urgent"
-          : p.daysLeftCount <= 3
-            ? "amber"
-            : "neutral",
-  }));
+  ).map((p) => {
+    const isVid =
+      p.mediaType === "VIDEO" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(p.fileName || p.imageUrl);
+    return {
+      id: p.id,
+      title: p.title,
+      fileName: p.fileName || `${p.title}.${isVid ? "mp4" : "jpg"}`,
+      albumKey: p.albumKey || "today",
+      albumTitle: p.albumTitle || "Sunday Service — RCCG JESUS HOUSE, OGBOMOSHO",
+      serviceDate: p.serviceDate || "Recent Service",
+      photographer: p.photographer || "Media Unit",
+      imageUrl: p.imageUrl,
+      mediaType: isVid ? "VIDEO" : "PHOTO",
+      alt: p.title,
+      badgeText: p.daysLeftLabel,
+      badgeVariant:
+        p.daysLeftLabel === "Today" || p.daysLeftCount >= 7
+          ? "today"
+          : p.daysLeftCount <= 1
+            ? "urgent"
+            : p.daysLeftCount <= 3
+              ? "amber"
+              : "neutral",
+    };
+  });
 
   const attendedHistory =
     (data?.myAttendanceHistory as Array<{
@@ -124,8 +132,13 @@ export default function PhotosGalleryPage(): ReactElement {
     new Set(allPhotos.map((p) => p.albumTitle).filter(Boolean)),
   );
 
+  const photosCount = allPhotos.filter((p) => p.mediaType === "PHOTO").length;
+  const videosCount = allPhotos.filter((p) => p.mediaType === "VIDEO").length;
+
   const filteredPhotos = allPhotos.filter((item) => {
     if (activeFilter === "all") return true;
+    if (activeFilter === "photos") return item.mediaType === "PHOTO";
+    if (activeFilter === "videos") return item.mediaType === "VIDEO";
     if (activeFilter === "today" || activeFilter === "thanksgiving" || activeFilter === "choir") {
       return item.albumKey === activeFilter;
     }
@@ -304,7 +317,7 @@ export default function PhotosGalleryPage(): ReactElement {
                   </span>
                 </div>
                 <span className="font-label-sm text-[11px] font-bold text-secondary">
-                  {allPhotos.length} Service Photo(s) Available
+                  {allPhotos.length} Service Media Item(s) Available
                 </span>
               </div>
             </div>
@@ -321,11 +334,43 @@ export default function PhotosGalleryPage(): ReactElement {
               onClick={() => setActiveFilter("all")}
               type="button"
             >
-              <span>All Photos</span>
+              <span>All Media</span>
               <span className="bg-on-primary/20 text-on-primary text-[11px] font-semibold px-2 py-0.5 rounded-full">
                 {allPhotos.length}
               </span>
             </button>
+
+            {videosCount > 0 && (
+              <button
+                className={`whitespace-nowrap h-9 px-space-md rounded-full font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5 ${
+                  activeFilter === "videos"
+                    ? "bg-secondary text-on-secondary"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+                onClick={() => setActiveFilter("videos")}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[16px]">videocam</span>
+                <span>Videos</span>
+                <span className="text-[11px] font-semibold opacity-85">({videosCount})</span>
+              </button>
+            )}
+
+            {photosCount > 0 && (
+              <button
+                className={`whitespace-nowrap h-9 px-space-md rounded-full font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5 ${
+                  activeFilter === "photos"
+                    ? "bg-primary text-on-primary"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+                onClick={() => setActiveFilter("photos")}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                <span>Photos</span>
+                <span className="text-[11px] font-semibold opacity-85">({photosCount})</span>
+              </button>
+            )}
 
             {distinctServiceAlbums.map((albumTitle) => {
               const count = allPhotos.filter((p) => p.albumTitle === albumTitle).length;
@@ -400,8 +445,8 @@ export default function PhotosGalleryPage(): ReactElement {
                 <div className="flex items-center gap-space-xs">
                   <span className="font-label-md text-label-md font-medium text-surface-container-highest">
                     {selectedIds.length === 1
-                      ? "1 photo selected"
-                      : `${selectedIds.length} photos selected`}
+                      ? "1 item selected"
+                      : `${selectedIds.length} items selected`}
                   </span>
                 </div>
                 <div className="flex items-center gap-space-sm">
@@ -426,11 +471,11 @@ export default function PhotosGalleryPage(): ReactElement {
             </div>
           )}
 
-          {/* Responsive Photo Grid (3 cols on mobile, 4 cols on tablet/desktop) */}
+          {/* Responsive Media Grid */}
           <div className="px-margin mt-space-md">
             {loading && allPhotos.length === 0 ? (
               <div className="py-10 text-center text-on-surface-variant font-body-sm">
-                Loading service photos from Cloudinary...
+                Loading service photos &amp; videos from Cloudinary...
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-4">
@@ -444,11 +489,32 @@ export default function PhotosGalleryPage(): ReactElement {
                       key={item.id}
                       onClick={() => handleCardClick(item)}
                     >
-                      <img
-                        alt={item.alt}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        src={item.imageUrl}
-                      />
+                      {item.mediaType === "VIDEO" ? (
+                        <div className="w-full h-full relative bg-inverse-surface/90 flex items-center justify-center">
+                          <video
+                            src={item.imageUrl}
+                            preload="metadata"
+                            className="w-full h-full object-cover opacity-85"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-10 h-10 rounded-full bg-primary/90 text-on-primary flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                              <span className="material-symbols-outlined text-[24px]">
+                                play_arrow
+                              </span>
+                            </div>
+                          </div>
+                          <span className="absolute top-1.5 right-1.5 bg-secondary text-on-secondary font-label-sm text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wider flex items-center gap-0.5 shadow-sm">
+                            <span className="material-symbols-outlined text-[12px]">videocam</span>{" "}
+                            VIDEO
+                          </span>
+                        </div>
+                      ) : (
+                        <img
+                          alt={item.alt}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          src={item.imageUrl}
+                        />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/75 via-transparent to-transparent opacity-90" />
 
                       {/* Days-left / Today Badge */}
@@ -501,14 +567,14 @@ export default function PhotosGalleryPage(): ReactElement {
             )}
           </div>
 
-          {/* Single Full-Screen Photo Preview Modal */}
+          {/* Single Full-Screen Media Preview Modal */}
           {previewPhoto && (
             <div className="fixed inset-0 z-50 bg-inverse-surface/80 backdrop-blur-md flex items-center justify-center p-margin">
               <div className="relative w-full max-w-sm bg-surface rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                 <div className="p-space-sm flex items-center justify-between bg-surface">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="material-symbols-outlined text-primary text-[20px]">
-                      auto_awesome
+                      {previewPhoto.mediaType === "VIDEO" ? "videocam" : "auto_awesome"}
                     </span>
                     <span className="font-label-md text-label-md font-semibold text-on-surface truncate">
                       {previewPhoto.title}
@@ -522,12 +588,22 @@ export default function PhotosGalleryPage(): ReactElement {
                     <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
                 </div>
-                <div className="relative aspect-square w-full bg-surface-container-high overflow-hidden">
-                  <img
-                    alt={previewPhoto.title}
-                    className="w-full h-full object-cover"
-                    src={previewPhoto.imageUrl}
-                  />
+                <div className="relative aspect-square w-full bg-black overflow-hidden flex items-center justify-center">
+                  {previewPhoto.mediaType === "VIDEO" ? (
+                    <video
+                      src={previewPhoto.imageUrl}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      alt={previewPhoto.title}
+                      className="w-full h-full object-cover"
+                      src={previewPhoto.imageUrl}
+                    />
+                  )}
                 </div>
                 <div className="p-space-md bg-surface flex items-center justify-between gap-space-sm">
                   <div className="flex flex-col min-w-0">
@@ -556,7 +632,9 @@ export default function PhotosGalleryPage(): ReactElement {
                       className="h-10 px-space-md rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1 shadow-sm active:scale-95 hover:bg-primary-container"
                       onClick={() => {
                         setPreviewPhoto(null);
-                        triggerToast("Photo saved to your device!");
+                        triggerToast(
+                          `${previewPhoto.mediaType === "VIDEO" ? "Video" : "Photo"} saved to your device!`,
+                        );
                       }}
                     >
                       <span className="material-symbols-outlined text-[18px]">download</span>

@@ -157,6 +157,7 @@ const photoSchema = new Schema(
     photographer: { type: String, default: "Media Department", trim: true },
     imageUrl: { type: String, required: true },
     storageKey: { type: String, required: true, unique: true },
+    mediaType: { type: String, enum: ["PHOTO", "VIDEO"], default: "PHOTO", required: true },
     fileSizeLabel: { type: String, default: "1.0 MB" },
     fileSizeBytes: { type: Number, default: 1_000_000 },
     tags: { type: [String], default: [] },

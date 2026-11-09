@@ -46,6 +46,7 @@ const ADMIN_PHOTO_HUB_QUERY = gql`
         serviceDate
         photographer
         imageUrl
+        mediaType
         fileSizeLabel
         tags
         status
@@ -67,6 +68,7 @@ const UPLOAD_PHOTO_MUTATION = gql`
       serviceDate
       photographer
       imageUrl
+      mediaType
       fileSizeLabel
       tags
       status
@@ -103,6 +105,7 @@ interface ModerationCardItem {
   serviceDate?: string;
   fileSizeLabel: string;
   imageUrl: string;
+  mediaType?: "PHOTO" | "VIDEO";
   alt: string;
   status: "PUBLISHED" | "PENDING" | "APPROVED";
   expiryText: string;
@@ -131,12 +134,13 @@ async function readFileAsDataUrl(file: File): Promise<string> {
 
 async function compressGalleryImageFile(
   file: File,
-): Promise<{ dataUrl: string; sizeMbLabel: string }> {
+): Promise<{ dataUrl: string; sizeMbLabel: string; isVideo: boolean }> {
   const rawDataUrl = await readFileAsDataUrl(file);
   const originalMb = Math.max(0.1, file.size / (1024 * 1024)).toFixed(1);
+  const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name);
 
-  if (typeof window === "undefined" || file.size <= 350 * 1024) {
-    return { dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` };
+  if (isVideo || typeof window === "undefined" || file.size <= 350 * 1024) {
+    return { dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB`, isVideo };
   }
 
   return new Promise((resolve) => {
@@ -160,20 +164,20 @@ async function compressGalleryImageFile(
         canvas.height = height;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` });
+          resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB`, isVideo: false });
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
         const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.84);
         const approxBytes = Math.round((compressedDataUrl.length * 3) / 4);
         const compressedMb = Math.max(0.1, approxBytes / (1024 * 1024)).toFixed(1);
-        resolve({ dataUrl: compressedDataUrl, sizeMbLabel: `${compressedMb} MB` });
+        resolve({ dataUrl: compressedDataUrl, sizeMbLabel: `${compressedMb} MB`, isVideo: false });
       } catch {
-        resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` });
+        resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB`, isVideo: false });
       }
     };
     img.onerror = () => {
-      resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` });
+      resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB`, isVideo: false });
     };
     img.src = rawDataUrl;
   });
@@ -268,6 +272,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
       serviceDate?: string;
       fileSizeLabel: string;
       imageUrl: string;
+      mediaType?: string;
       status: string;
       tags: string[];
       needsConsentCheck: boolean;
@@ -275,20 +280,25 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
     }>;
 
     setCards(
-      rawPhotos.map((p) => ({
-        id: p.id,
-        fileName: p.fileName || p.title,
-        albumTitle: p.albumTitle,
-        serviceDate: p.serviceDate,
-        fileSizeLabel: p.fileSizeLabel || "2.4 MB",
-        imageUrl: p.imageUrl,
-        alt: p.title,
-        status:
-          p.status === "PENDING" ? "PENDING" : p.status === "APPROVED" ? "APPROVED" : "PUBLISHED",
-        expiryText: p.daysLeftLabel || "Expires in 7d",
-        tags: p.tags?.length ? p.tags : ["Congregation"],
-        needsConsentCheck: p.needsConsentCheck,
-      })),
+      rawPhotos.map((p) => {
+        const isVid =
+          p.mediaType === "VIDEO" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(p.fileName || p.imageUrl);
+        return {
+          id: p.id,
+          fileName: p.fileName || p.title,
+          albumTitle: p.albumTitle,
+          serviceDate: p.serviceDate,
+          fileSizeLabel: p.fileSizeLabel || "2.4 MB",
+          imageUrl: p.imageUrl,
+          mediaType: isVid ? "VIDEO" : "PHOTO",
+          alt: p.title,
+          status:
+            p.status === "PENDING" ? "PENDING" : p.status === "APPROVED" ? "APPROVED" : "PUBLISHED",
+          expiryText: p.daysLeftLabel || "Expires in 7d",
+          tags: p.tags?.length ? p.tags : ["Congregation"],
+          needsConsentCheck: p.needsConsentCheck,
+        };
+      }),
     );
   }, [data]);
 
@@ -306,29 +316,36 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
     setUploadingFiles(true);
     setStatusIsError(false);
     setUploadProgressPct(10);
-    setUploadStatusText(`Preparing ${totalFiles} photo(s) from device gallery...`);
+    setUploadStatusText(`Preparing ${totalFiles} file(s) (photos & videos) from device gallery...`);
     setUploadSubtext(`Target Service: ${serviceLabel} (${serviceDateLabel})`);
-    showNotification(`Starting upload of ${totalFiles} photo(s) for ${serviceLabel}...`, false);
+    showNotification(`Starting upload of ${totalFiles} file(s) for ${serviceLabel}...`, false);
 
     let uploadedCount = 0;
     const uploadedPreviews: string[] = [];
 
     for (let idx = 0; idx < files.length; idx += 1) {
       const file = files[idx]!;
+      const isVideo =
+        file.type.startsWith("video/") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name);
       const stepBasePct = Math.round((idx / totalFiles) * 100);
       setUploadProgressPct(Math.max(15, stepBasePct + 10));
-      setUploadStatusText(`Optimizing & uploading (${idx + 1} of ${totalFiles}): ${file.name}...`);
+      setUploadStatusText(
+        `Optimizing & uploading ${isVideo ? "video" : "photo"} (${idx + 1} of ${totalFiles}): ${file.name}...`,
+      );
 
       try {
         const { dataUrl, sizeMbLabel } = await compressGalleryImageFile(file);
-        uploadedPreviews.push(dataUrl);
-        setRecentPreviews([...uploadedPreviews]);
+        if (!isVideo) {
+          uploadedPreviews.push(dataUrl);
+          setRecentPreviews([...uploadedPreviews]);
+        }
         setUploadProgressPct(Math.min(92, Math.round(((idx + 0.6) / totalFiles) * 100)));
 
         const isThanksgiving = serviceLabel.toLowerCase().includes("thanksgiving");
         const albumKey = isThanksgiving ? "thanksgiving" : "today";
         const cleanTitle =
-          file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ") || "Service Moment";
+          file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ") ||
+          (isVideo ? "Service Video Moment" : "Service Moment");
 
         const res = await uploadPhotoMutation({
           variables: {
@@ -339,8 +356,9 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
               albumTitle: serviceLabel,
               serviceDate: serviceDateLabel,
               photographer: data?.me?.fullName ?? "Media Unit",
+              mediaType: isVideo ? "VIDEO" : "PHOTO",
               fileSizeLabel: sizeMbLabel,
-              tags: ["Congregation"],
+              tags: isVideo ? ["Video Highlight", "Congregation"] : ["Congregation"],
               status: "PUBLISHED",
               needsConsentCheck: false,
               fileContentBase64: dataUrl,
@@ -357,6 +375,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
               serviceDate?: string;
               fileSizeLabel: string;
               imageUrl: string;
+              mediaType?: string;
               status: string;
               tags: string[];
               needsConsentCheck: boolean;
@@ -373,6 +392,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
               serviceDate: uploadedPhoto.serviceDate || serviceDateLabel,
               fileSizeLabel: uploadedPhoto.fileSizeLabel || sizeMbLabel,
               imageUrl: uploadedPhoto.imageUrl || dataUrl,
+              mediaType: uploadedPhoto.mediaType === "VIDEO" || isVideo ? "VIDEO" : "PHOTO",
               alt: uploadedPhoto.title,
               status: "PUBLISHED",
               expiryText: uploadedPhoto.daysLeftLabel || "Today",
@@ -386,7 +406,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
         uploadedCount += 1;
         setUploadProgressPct(Math.round(((idx + 1) / totalFiles) * 100));
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : "Failed to upload photo";
+        const errMsg = err instanceof Error ? err.message : "Failed to upload file";
         setUploadStatusText(`Upload error on ${file.name}`);
         setUploadSubtext(errMsg);
         showNotification(`Error uploading ${file.name}: ${errMsg}`, true);
@@ -398,14 +418,14 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
     if (uploadedCount > 0) {
       setUploadProgressPct(100);
       setUploadStatusText(
-        `✓ Uploaded ${uploadedCount} of ${totalFiles} photo(s) for ${serviceLabel}!`,
+        `✓ Uploaded ${uploadedCount} of ${totalFiles} media item(s) for ${serviceLabel}!`,
       );
       setUploadSubtext(
-        "Saved to Cloudinary & MongoDB — Members can now view and download them on /photos.",
+        "Saved to Cloudinary & MongoDB — Members can now view and download photos & videos on /photos.",
       );
       await refetch();
       showNotification(
-        `✓ Successfully uploaded ${uploadedCount} photo(s) for "${serviceLabel}"! Members can now see them in the Photos gallery.`,
+        `✓ Successfully uploaded ${uploadedCount} photo(s) & video(s) for "${serviceLabel}"! Every church member can now see them in the Photos gallery.`,
         false,
       );
     }
@@ -1020,7 +1040,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*"
                         multiple
                         onChange={(e) => void handleFileSelect(e)}
                         className="hidden"
@@ -1031,16 +1051,16 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                       <p className="font-label-lg text-label-lg text-primary font-semibold">
                         {uploadingFiles
                           ? "Uploading to Cloudinary..."
-                          : "Tap to select photos from device gallery"}
+                          : "Tap to select photos & videos from device gallery"}
                       </p>
                       <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
                         or{" "}
                         <span className="text-secondary font-semibold hover:underline">
-                          browse workstation files
+                          browse device photos &amp; videos
                         </span>
                       </p>
                       <p className="font-label-sm text-label-sm text-outline mt-2">
-                        JPEG, HEIC, PNG • Auto-saved to Cloudinary &amp; MongoDB
+                        JPEG, PNG, MP4, MOV • Auto-saved to Cloudinary &amp; MongoDB
                       </p>
                       <div className="mt-space-md px-space-sm py-1.5 bg-surface-container-lowest rounded-lg flex items-center gap-2 max-w-full">
                         <span className="material-symbols-outlined text-secondary text-[16px]">
@@ -1244,11 +1264,34 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                           key={card.id}
                         >
                           <div className="relative w-full h-48 bg-surface-container overflow-hidden">
-                            <img
-                              alt={card.alt}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              src={card.imageUrl}
-                            />
+                            {card.mediaType === "VIDEO" ? (
+                              <div className="w-full h-full relative bg-inverse-surface/90 flex items-center justify-center">
+                                <video
+                                  src={card.imageUrl}
+                                  preload="metadata"
+                                  className="w-full h-full object-cover opacity-85"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="w-10 h-10 rounded-full bg-primary/90 text-on-primary flex items-center justify-center shadow-lg">
+                                    <span className="material-symbols-outlined text-[24px]">
+                                      play_arrow
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="absolute bottom-2.5 right-2.5 bg-secondary text-on-secondary font-label-sm text-[10px] px-1.5 py-0.5 rounded-md font-bold tracking-wider flex items-center gap-0.5 shadow-sm">
+                                  <span className="material-symbols-outlined text-[12px]">
+                                    videocam
+                                  </span>{" "}
+                                  VIDEO
+                                </span>
+                              </div>
+                            ) : (
+                              <img
+                                alt={card.alt}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                src={card.imageUrl}
+                              />
+                            )}
                             <div className="absolute top-2.5 left-2.5">
                               <input
                                 checked={isChecked}

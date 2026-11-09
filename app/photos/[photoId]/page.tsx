@@ -20,16 +20,19 @@ const PHOTO_VIEWER_QUERY = gql`
       serviceDate
       photographer
       imageUrl
+      mediaType
       fileSizeLabel
       daysLeftLabel
     }
     servicePhotos(albumKey: "all") {
       id
       title
+      fileName
       albumTitle
       serviceDate
       photographer
       imageUrl
+      mediaType
       fileSizeLabel
       daysLeftLabel
     }
@@ -38,9 +41,12 @@ const PHOTO_VIEWER_QUERY = gql`
 
 interface ViewerPhotoSlide {
   id: string;
+  title?: string;
+  fileName?: string;
   albumTitle: string;
   expiryText: string;
   imageUrl: string;
+  mediaType: "PHOTO" | "VIDEO";
   fileSizeLabel: string;
   photographer: string;
   dateTimeLabel: string;
@@ -63,22 +69,32 @@ export default function PhotoViewerPage(): ReactElement {
   const slides: ViewerPhotoSlide[] = (
     (data?.servicePhotos as Array<{
       id: string;
+      title?: string;
+      fileName?: string;
       albumTitle: string;
       daysLeftLabel: string;
       imageUrl: string;
+      mediaType?: string;
       fileSizeLabel: string;
       photographer: string;
       serviceDate: string;
     }>) ?? []
-  ).map((p) => ({
-    id: p.id,
-    albumTitle: p.albumTitle,
-    expiryText: `${p.daysLeftLabel} · Auto-expires after 7 days`,
-    imageUrl: p.imageUrl,
-    fileSizeLabel: p.fileSizeLabel,
-    photographer: p.photographer,
-    dateTimeLabel: p.serviceDate,
-  }));
+  ).map((p) => {
+    const isVid =
+      p.mediaType === "VIDEO" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(p.fileName || p.imageUrl);
+    return {
+      id: p.id,
+      title: p.title,
+      fileName: p.fileName || `${p.title || "service"}.${isVid ? "mp4" : "jpg"}`,
+      albumTitle: p.albumTitle,
+      expiryText: `${p.daysLeftLabel} · Auto-expires after 7 days`,
+      imageUrl: p.imageUrl,
+      mediaType: isVid ? "VIDEO" : "PHOTO",
+      fileSizeLabel: p.fileSizeLabel,
+      photographer: p.photographer,
+      dateTimeLabel: p.serviceDate,
+    };
+  });
 
   useEffect(() => {
     const idx = slides.findIndex((s) => s.id === photoId);
@@ -87,12 +103,23 @@ export default function PhotoViewerPage(): ReactElement {
     }
   }, [photoId, slides.length]);
 
+  const fallbackIsVid =
+    data?.servicePhoto?.mediaType === "VIDEO" ||
+    /\.(mp4|webm|mov|m4v|ogg)$/i.test(
+      data?.servicePhoto?.fileName || data?.servicePhoto?.imageUrl || "",
+    );
+
   const fallbackSlide: ViewerPhotoSlide = {
     id: photoId,
+    title: (data?.servicePhoto?.title as string | undefined) ?? "Service Highlight",
+    fileName:
+      (data?.servicePhoto?.fileName as string | undefined) ??
+      `church-media.${fallbackIsVid ? "mp4" : "jpg"}`,
     albumTitle:
       (data?.servicePhoto?.albumTitle as string | undefined) ?? "RCCG JESUS HOUSE, OGBOMOSHO",
     expiryText: "Expires in 7 days · Auto-clears",
     imageUrl: (data?.servicePhoto?.imageUrl as string | undefined) ?? "/rccg-logo.png",
+    mediaType: fallbackIsVid ? "VIDEO" : "PHOTO",
     fileSizeLabel: (data?.servicePhoto?.fileSizeLabel as string | undefined) ?? "High-Res",
     photographer: (data?.servicePhoto?.photographer as string | undefined) ?? "Media Team",
     dateTimeLabel: (data?.servicePhoto?.serviceDate as string | undefined) ?? "Sunday Service",
@@ -103,6 +130,20 @@ export default function PhotoViewerPage(): ReactElement {
 
   function handleDownload(): void {
     setDownloadState("saving");
+    try {
+      const a = document.createElement("a");
+      a.href = currentSlide.imageUrl;
+      a.download =
+        currentSlide.fileName ||
+        `service-media.${currentSlide.mediaType === "VIDEO" ? "mp4" : "jpg"}`;
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      // ignore
+    }
     setTimeout(() => {
       setDownloadState("done");
       setShowSaveToast(true);
@@ -180,12 +221,22 @@ export default function PhotoViewerPage(): ReactElement {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start px-4 sm:px-6 lg:px-8 pb-space-xl">
             {/* High-Resolution Focus Frame */}
             <div className="lg:col-span-7 relative w-full">
-              <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-md bg-surface-container-lowest">
-                <img
-                  alt={currentSlide.albumTitle}
-                  className="w-full h-full object-cover transition-transform duration-300 active:scale-98"
-                  src={currentSlide.imageUrl}
-                />
+              <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-md bg-surface-container-lowest flex items-center justify-center">
+                {currentSlide.mediaType === "VIDEO" ? (
+                  <video
+                    src={currentSlide.imageUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain bg-black"
+                  />
+                ) : (
+                  <img
+                    alt={currentSlide.albumTitle}
+                    className="w-full h-full object-cover transition-transform duration-300 active:scale-98"
+                    src={currentSlide.imageUrl}
+                  />
+                )}
 
                 {/* Quick Gesture Overlay Indicators */}
                 <div className="absolute inset-x-0 top-0 p-space-md bg-gradient-to-b from-inverse-surface/60 via-inverse-surface/20 to-transparent flex items-center justify-between text-on-primary">

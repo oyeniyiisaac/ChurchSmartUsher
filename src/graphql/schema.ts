@@ -290,6 +290,7 @@ export const typeDefs = `#graphql
     serviceDate: String!
     photographer: String!
     imageUrl: String!
+    mediaType: String!
     storageKey: String!
     fileSizeLabel: String!
     fileSizeBytes: Int!
@@ -327,6 +328,7 @@ export const typeDefs = `#graphql
     serviceDate: String
     photographer: String
     imageUrl: String
+    mediaType: String
     fileSizeLabel: String
     tags: [String!]
     status: String

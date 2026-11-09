@@ -8,6 +8,7 @@ export interface CloudinaryUploadResult {
   format: string;
   width: number;
   height: number;
+  resourceType?: "image" | "video";
 }
 
 function generateCloudinarySignature(
@@ -35,11 +36,12 @@ function toDataUri(base64OrDataUri: string, mimeType: string = "image/jpeg"): st
   return `data:${mimeType};base64,${trimmed}`;
 }
 
-export async function uploadImageToCloudinary(options: {
+export async function uploadMediaToCloudinary(options: {
   fileContentBase64: string;
   folder?: string;
   publicId?: string;
   mimeType?: string;
+  resourceType?: "image" | "video" | "auto";
 }): Promise<CloudinaryUploadResult> {
   const env = getEnv();
   const cloudName = env.CLOUDINARY_CLOUD_NAME;
@@ -53,6 +55,13 @@ export async function uploadImageToCloudinary(options: {
   const timestamp = Math.floor(Date.now() / 1000);
   const folder = options.folder ?? "rccg_jesus_house_ogbomosho";
 
+  const isVideo =
+    options.resourceType === "video" ||
+    Boolean(options.mimeType?.startsWith("video/")) ||
+    options.fileContentBase64.startsWith("data:video/");
+  const resolvedResourceType = isVideo ? "video" : "image";
+  const defaultMimeType = isVideo ? "video/mp4" : "image/jpeg";
+
   const signParams: Record<string, string | number> = {
     folder,
     timestamp,
@@ -62,7 +71,7 @@ export async function uploadImageToCloudinary(options: {
   }
 
   const signature = generateCloudinarySignature(signParams, apiSecret);
-  const filePayload = toDataUri(options.fileContentBase64, options.mimeType);
+  const filePayload = toDataUri(options.fileContentBase64, options.mimeType || defaultMimeType);
 
   const formData = new FormData();
   formData.append("file", filePayload);
@@ -74,7 +83,7 @@ export async function uploadImageToCloudinary(options: {
   }
   formData.append("signature", signature);
 
-  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`;
+  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resolvedResourceType}/upload`;
   const response = await fetch(endpoint, {
     method: "POST",
     body: formData,
@@ -92,19 +101,26 @@ export async function uploadImageToCloudinary(options: {
     format: string;
     width: number;
     height: number;
+    resource_type?: string;
   };
 
   return {
     secureUrl: json.secure_url,
     publicId: json.public_id,
     bytes: json.bytes ?? 0,
-    format: json.format ?? "jpg",
+    format: json.format ?? (isVideo ? "mp4" : "jpg"),
     width: json.width ?? 0,
     height: json.height ?? 0,
+    resourceType: resolvedResourceType,
   };
 }
 
-export async function deleteImageFromCloudinary(publicId: string): Promise<boolean> {
+export const uploadImageToCloudinary = uploadMediaToCloudinary;
+
+export async function deleteMediaFromCloudinary(
+  publicId: string,
+  resourceType: "image" | "video" = "image",
+): Promise<boolean> {
   const env = getEnv();
   const cloudName = env.CLOUDINARY_CLOUD_NAME;
   const apiKey = env.CLOUDINARY_API_KEY;
@@ -127,7 +143,7 @@ export async function deleteImageFromCloudinary(publicId: string): Promise<boole
   formData.append("timestamp", String(timestamp));
   formData.append("signature", signature);
 
-  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/destroy`;
+  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resourceType}/destroy`;
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -138,3 +154,5 @@ export async function deleteImageFromCloudinary(publicId: string): Promise<boole
     return false;
   }
 }
+
+export const deleteImageFromCloudinary = deleteMediaFromCloudinary;

@@ -4,9 +4,16 @@ import mongoose from "mongoose";
 import { getEnv } from "../config/env";
 import { Photo, type PhotoStatus } from "../db/models";
 import { connectToDatabase } from "../db/mongoose";
-import { deleteImageFromCloudinary, uploadImageToCloudinary } from "./cloudinary";
+import {
+  deleteMediaFromCloudinary,
+  uploadMediaToCloudinary,
+  deleteImageFromCloudinary,
+  uploadImageToCloudinary,
+} from "./cloudinary";
 
 export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type MediaType = "PHOTO" | "VIDEO";
 
 export interface ServicePhotoRecord {
   id: string;
@@ -17,6 +24,7 @@ export interface ServicePhotoRecord {
   serviceDate: string;
   photographer: string;
   imageUrl: string;
+  mediaType: MediaType;
   storageKey: string;
   fileSizeLabel: string;
   fileSizeBytes: number;
@@ -93,6 +101,20 @@ export function formatPhotoDaysLeft(
   return `${days}d left`;
 }
 
+export function isMediaVideo(item: {
+  mediaType?: string;
+  fileName?: string;
+  imageUrl?: string;
+  fileContentBase64?: string;
+}): boolean {
+  if (item.mediaType === "VIDEO") return true;
+  if (item.mediaType === "PHOTO") return false;
+  if (item.fileContentBase64?.startsWith("data:video/")) return true;
+  if (item.imageUrl && /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(item.imageUrl)) return true;
+  if (item.fileName && /\.(mp4|webm|mov|m4v|ogg)$/i.test(item.fileName)) return true;
+  return false;
+}
+
 function createTestSeedPhotos(baseNow: Date = new Date()): ServicePhotoRecord[] {
   const d7 = computePhotoExpiryDate(baseNow);
   const d3Upload = new Date(baseNow.getTime() - 4 * 24 * 60 * 60 * 1000);
@@ -108,6 +130,7 @@ function createTestSeedPhotos(baseNow: Date = new Date()): ServicePhotoRecord[] 
       serviceDate: "2026-11-17",
       photographer: "Media Department",
       imageUrl: "/rccg-logo.png",
+      mediaType: "PHOTO",
       storageKey: "seed-DSC_4901_Choir_Praise.jpg",
       fileSizeLabel: "1.2 MB",
       fileSizeBytes: 1_200_000,
@@ -126,6 +149,7 @@ function createTestSeedPhotos(baseNow: Date = new Date()): ServicePhotoRecord[] 
       serviceDate: "2026-11-13",
       photographer: "Media Department",
       imageUrl: "/rccg-logo.png",
+      mediaType: "PHOTO",
       storageKey: "seed-DSC_4928_HighPraise_Aisle.jpg",
       fileSizeLabel: "1.4 MB",
       fileSizeBytes: 1_400_000,
@@ -182,6 +206,7 @@ export interface UploadServicePhotoInput {
   serviceDate?: string;
   photographer?: string;
   imageUrl?: string;
+  mediaType?: MediaType;
   fileSizeLabel?: string;
   fileSizeBytes?: number;
   tags?: string[];
@@ -200,37 +225,51 @@ export async function uploadServicePhoto(
   const expiresAt = computePhotoExpiryDate(uploadedAt);
   nextPhotoSeq += 1;
 
+  const isVideo = isMediaVideo({
+    mediaType: input.mediaType,
+    fileName: input.fileName,
+    imageUrl: input.imageUrl,
+    fileContentBase64: input.fileContentBase64,
+  });
+  const mediaType: MediaType = isVideo ? "VIDEO" : "PHOTO";
+
   let storageKey = `${uploadedAt.getTime()}-${nextPhotoSeq}-${path.basename(input.fileName)}`;
   let resolvedImageUrl = input.imageUrl ?? "";
   let fileSizeBytes = input.fileSizeBytes ?? 0;
 
   if (!isTest && input.fileContentBase64 && input.fileContentBase64.trim().length > 0) {
     try {
-      const uploaded = await uploadImageToCloudinary({
+      const uploaded = await uploadMediaToCloudinary({
         fileContentBase64: input.fileContentBase64,
-        folder: "rccg_jesus_house_ogbomosho/service_photos",
+        folder: isVideo
+          ? "rccg_jesus_house_ogbomosho/service_videos"
+          : "rccg_jesus_house_ogbomosho/service_photos",
+        resourceType: isVideo ? "video" : "image",
       });
       resolvedImageUrl = uploaded.secureUrl;
       storageKey = uploaded.publicId;
       fileSizeBytes = uploaded.bytes || Buffer.from(input.fileContentBase64, "base64").byteLength;
     } catch {
+      const fallbackMime = isVideo ? "video/mp4" : "image/jpeg";
       resolvedImageUrl = input.fileContentBase64.startsWith("data:")
         ? input.fileContentBase64
-        : `data:image/jpeg;base64,${input.fileContentBase64}`;
+        : `data:${fallbackMime};base64,${input.fileContentBase64}`;
       fileSizeBytes = Buffer.from(input.fileContentBase64, "base64").byteLength;
     }
   } else if (isTest) {
     const filePath = getPhotoStorageFilePath(storageKey);
     const fileBuffer = input.fileContentBase64
       ? Buffer.from(input.fileContentBase64, "base64")
-      : Buffer.from(`churchconnect-photo-${storageKey}`);
+      : Buffer.from(`churchconnect-${isVideo ? "video" : "photo"}-${storageKey}`);
     await fs.promises.writeFile(filePath, fileBuffer);
     fileSizeBytes = input.fileSizeBytes ?? Math.max(fileBuffer.byteLength, 1_200_000);
-    resolvedImageUrl = resolvedImageUrl || "/rccg-logo.png";
+    resolvedImageUrl =
+      resolvedImageUrl || (isVideo ? "/sample-service-video.mp4" : "/rccg-logo.png");
   } else if (!resolvedImageUrl && input.fileContentBase64) {
+    const fallbackMime = isVideo ? "video/mp4" : "image/jpeg";
     resolvedImageUrl = input.fileContentBase64.startsWith("data:")
       ? input.fileContentBase64
-      : `data:image/jpeg;base64,${input.fileContentBase64}`;
+      : `data:${fallbackMime};base64,${input.fileContentBase64}`;
     fileSizeBytes = Buffer.from(input.fileContentBase64, "base64").byteLength;
   }
 
@@ -248,7 +287,8 @@ export async function uploadServicePhoto(
     albumTitle: input.albumTitle ?? "Sunday Service - RCCG JESUS HOUSE, OGBOMOSHO",
     serviceDate: input.serviceDate ?? uploadedAt.toISOString().slice(0, 10),
     photographer: input.photographer ?? "Media Department",
-    imageUrl: resolvedImageUrl || "/rccg-logo.png",
+    imageUrl: resolvedImageUrl || (isVideo ? "/sample-service-video.mp4" : "/rccg-logo.png"),
+    mediaType,
     storageKey,
     fileSizeLabel,
     fileSizeBytes,
@@ -276,6 +316,7 @@ export async function uploadServicePhoto(
         serviceDate: record.serviceDate,
         photographer: record.photographer,
         imageUrl: record.imageUrl,
+        mediaType: record.mediaType,
         storageKey: record.storageKey,
         fileSizeLabel: record.fileSizeLabel,
         fileSizeBytes: record.fileSizeBytes,
@@ -326,6 +367,9 @@ export async function listActivePhotos(options?: {
             serviceDate: doc.serviceDate,
             photographer: doc.photographer,
             imageUrl: doc.imageUrl,
+            mediaType:
+              (doc as { mediaType?: MediaType }).mediaType ||
+              (isMediaVideo(doc) ? "VIDEO" : "PHOTO"),
             storageKey: doc.storageKey,
             fileSizeLabel: doc.fileSizeLabel,
             fileSizeBytes: doc.fileSizeBytes,
@@ -382,6 +426,8 @@ export async function getPhotoById(
           serviceDate: doc.serviceDate,
           photographer: doc.photographer,
           imageUrl: doc.imageUrl,
+          mediaType:
+            (doc as { mediaType?: MediaType }).mediaType || (isMediaVideo(doc) ? "VIDEO" : "PHOTO"),
           storageKey: doc.storageKey,
           fileSizeLabel: doc.fileSizeLabel,
           fileSizeBytes: doc.fileSizeBytes,
@@ -438,6 +484,9 @@ export async function listAdminPhotos(options?: {
             serviceDate: doc.serviceDate,
             photographer: doc.photographer,
             imageUrl: doc.imageUrl,
+            mediaType:
+              (doc as { mediaType?: MediaType }).mediaType ||
+              (isMediaVideo(doc) ? "VIDEO" : "PHOTO"),
             storageKey: doc.storageKey,
             fileSizeLabel: doc.fileSizeLabel,
             fileSizeBytes: doc.fileSizeBytes,
@@ -543,6 +592,8 @@ export async function moderateServicePhoto(input: {
         serviceDate: doc.serviceDate,
         photographer: doc.photographer,
         imageUrl: doc.imageUrl,
+        mediaType:
+          (doc as { mediaType?: MediaType }).mediaType || (isMediaVideo(doc) ? "VIDEO" : "PHOTO"),
         storageKey: doc.storageKey,
         fileSizeLabel: doc.fileSizeLabel,
         fileSizeBytes: doc.fileSizeBytes,

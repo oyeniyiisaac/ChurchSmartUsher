@@ -39,6 +39,7 @@ const DASHBOARD_QUERY = gql`
       title
       albumTitle
       imageUrl
+      mediaType
       daysLeftLabel
     }
   }
@@ -497,10 +498,10 @@ export default function DashboardPage(): ReactNode {
                 <div className="flex items-start justify-between gap-space-xs">
                   <div>
                     <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">
-                      Service Moments Gallery
+                      Service Photos &amp; Videos
                     </h3>
                     <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      Cloudinary 7-day parish gallery captures
+                      Cloudinary 7-day parish captures &amp; video highlights
                     </p>
                   </div>
                 </div>
@@ -510,37 +511,60 @@ export default function DashboardPage(): ReactNode {
                 </div>
                 {photos.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2 pt-1">
-                    {photos.slice(0, 3).map((p, idx) => (
-                      <Link
-                        key={p.id}
-                        href={`/photos/${p.id}`}
-                        className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm block"
-                      >
-                        <img
-                          className="w-full h-full object-cover"
-                          alt={p.title}
-                          src={p.imageUrl}
-                        />
-                        {idx === 2 && photos.length > 3 && (
-                          <div className="absolute inset-0 bg-primary/40 flex items-center justify-center">
-                            <span className="font-label-lg text-label-lg text-on-primary font-bold">
-                              +{photos.length - 3}
-                            </span>
-                          </div>
-                        )}
-                      </Link>
-                    ))}
+                    {photos.slice(0, 3).map((p, idx) => {
+                      const isVid =
+                        (p as { mediaType?: string }).mediaType === "VIDEO" ||
+                        /\.(mp4|webm|mov|m4v|ogg)$/i.test(p.imageUrl);
+                      return (
+                        <Link
+                          key={p.id}
+                          href={`/photos/${p.id}`}
+                          className="relative aspect-square rounded-lg overflow-hidden bg-surface-container-high shadow-sm block group"
+                        >
+                          {isVid ? (
+                            <div className="w-full h-full relative bg-inverse-surface/90 flex items-center justify-center">
+                              <video
+                                src={p.imageUrl}
+                                preload="metadata"
+                                className="w-full h-full object-cover opacity-85"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-7 h-7 rounded-full bg-primary/90 text-on-primary flex items-center justify-center shadow-sm">
+                                  <span className="material-symbols-outlined text-[16px]">
+                                    play_arrow
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <img
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              alt={p.title}
+                              src={p.imageUrl}
+                            />
+                          )}
+                          {idx === 2 && photos.length > 3 && (
+                            <div className="absolute inset-0 bg-primary/60 flex items-center justify-center backdrop-blur-xs">
+                              <span className="font-label-lg text-label-lg text-on-primary font-bold">
+                                +{photos.length - 3}
+                              </span>
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="rounded-lg bg-surface-container-low p-4 text-center text-on-surface-variant font-body-sm text-body-sm">
-                    No service photos uploaded yet. Photos uploaded to Cloudinary will appear here.
+                    No service photos or videos uploaded yet. Media uploaded to Cloudinary will
+                    appear here for all church members.
                   </div>
                 )}
                 <Link
                   className="inline-flex items-center justify-between pt-2 text-primary font-label-lg text-label-lg hover:underline"
                   href="/photos"
                 >
-                  <span>View all photos ({photos.length})</span>
+                  <span>View all photos &amp; videos ({photos.length})</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </Link>
               </div>
