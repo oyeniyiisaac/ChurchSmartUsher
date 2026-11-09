@@ -18,11 +18,15 @@ const ADMIN_PHOTO_HUB_QUERY = gql`
     activeService {
       id
       name
+      serviceTag
+      sermonTopic
       serviceDate
     }
     services {
       id
       name
+      serviceTag
+      sermonTopic
       serviceDate
     }
     adminPhotoHub(statusFilter: $statusFilter, tagFilter: $tagFilter) {
@@ -58,6 +62,10 @@ const UPLOAD_PHOTO_MUTATION = gql`
       id
       title
       fileName
+      albumKey
+      albumTitle
+      serviceDate
+      photographer
       imageUrl
       fileSizeLabel
       tags
@@ -91,6 +99,8 @@ const PURGE_EXPIRED_PHOTOS_MUTATION = gql`
 interface ModerationCardItem {
   id: string;
   fileName: string;
+  albumTitle?: string;
+  serviceDate?: string;
   fileSizeLabel: string;
   imageUrl: string;
   alt: string;
@@ -110,17 +120,89 @@ const TAG_FILTERS = [
   "Youth Fellowship",
 ];
 
+async function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(new Error("Failed to read file from device gallery"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressGalleryImageFile(
+  file: File,
+): Promise<{ dataUrl: string; sizeMbLabel: string }> {
+  const rawDataUrl = await readFileAsDataUrl(file);
+  const originalMb = Math.max(0.1, file.size / (1024 * 1024)).toFixed(1);
+
+  if (typeof window === "undefined" || file.size <= 350 * 1024) {
+    return { dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` };
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const maxDim = 1600;
+        let width = img.naturalWidth || img.width || 1200;
+        let height = img.naturalHeight || img.height || 900;
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` });
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.84);
+        const approxBytes = Math.round((compressedDataUrl.length * 3) / 4);
+        const compressedMb = Math.max(0.1, approxBytes / (1024 * 1024)).toFixed(1);
+        resolve({ dataUrl: compressedDataUrl, sizeMbLabel: `${compressedMb} MB` });
+      } catch {
+        resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` });
+      }
+    };
+    img.onerror = () => {
+      resolve({ dataUrl: rawDataUrl, sizeMbLabel: `${originalMb} MB` });
+    };
+    img.src = rawDataUrl;
+  });
+}
+
 export default function AdminPhotoModerationHubPage(): ReactElement {
   const [cards, setCards] = useState<ModerationCardItem[]>([]);
   const [activeTab, setActiveTab] = useState<"ALL" | "PUBLISHED" | "PENDING" | "FLAGGED">("ALL");
   const [activeTag, setActiveTag] = useState("All Tags");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [statusIsError, setStatusIsError] = useState<boolean>(false);
   const [uploadingFiles, setUploadingFiles] = useState<boolean>(false);
-  const [selectedServiceName, setSelectedServiceName] = useState<string>("Sunday Worship Service");
+  const [uploadProgressPct, setUploadProgressPct] = useState<number>(0);
+  const [uploadStatusText, setUploadStatusText] = useState<string>(
+    "Ready to upload — Select photos from your device gallery.",
+  );
+  const [uploadSubtext, setUploadSubtext] = useState<string>(
+    "Photos are optimized, uploaded to Cloudinary, and published to the Member Gallery.",
+  );
+  const [recentPreviews, setRecentPreviews] = useState<string[]>([]);
+  const [selectedServiceName, setSelectedServiceName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data, refetch } = useQuery(ADMIN_PHOTO_HUB_QUERY, {
+  const {
+    data,
+    error: queryError,
+    refetch,
+  } = useQuery(ADMIN_PHOTO_HUB_QUERY, {
     variables: { statusFilter: activeTab, tagFilter: activeTag },
     fetchPolicy: "network-only",
   });
@@ -129,32 +211,61 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
   const [purgeMutation] = useMutation(PURGE_EXPIRED_PHOTOS_MUTATION);
 
   const isAdmin = hasAdminAccess(data?.me);
-  const serviceOptions: Array<{ id: string; name: string; serviceDate: string }> =
+  const serviceOptions: Array<{
+    id: string;
+    name: string;
+    serviceTag?: string;
+    sermonTopic?: string;
+    serviceDate: string;
+  }> =
     data?.services && data.services.length > 0
-      ? (data.services as Array<{ id: string; name: string; serviceDate: string }>)
+      ? (data.services as Array<{
+          id: string;
+          name: string;
+          serviceTag?: string;
+          sermonTopic?: string;
+          serviceDate: string;
+        }>)
       : [
           {
             id: "active-sunday",
             name: (data?.activeService?.name as string | undefined) || "Sunday Worship Service",
-            serviceDate: (data?.activeService?.serviceDate as string | undefined) || "Sunday",
-          },
-          {
-            id: "midweek-study",
-            name: "Midweek Digging Deep / Faith Clinic",
-            serviceDate: "Midweek",
+            serviceTag: (data?.activeService?.serviceTag as string | undefined) || "Sunday Service",
+            sermonTopic: (data?.activeService?.sermonTopic as string | undefined) || "",
+            serviceDate:
+              (data?.activeService?.serviceDate as string | undefined) ||
+              new Date().toISOString().slice(0, 10),
           },
           {
             id: "thanksgiving-service",
             name: "Monthly Thanksgiving Service",
             serviceDate: "First Sunday",
           },
+          {
+            id: "midweek-study",
+            name: "Midweek Digging Deep / Faith Clinic",
+            serviceDate: "Midweek",
+          },
         ];
+
+  useEffect(() => {
+    if (!selectedServiceName && serviceOptions.length > 0) {
+      const preferred =
+        (data?.activeService?.name as string | undefined) || serviceOptions[0]!.name;
+      setSelectedServiceName(preferred);
+    }
+  }, [data?.activeService?.name, selectedServiceName, serviceOptions]);
+
+  const activeSelectedService =
+    serviceOptions.find((s) => s.name === selectedServiceName) ?? serviceOptions[0];
 
   useEffect(() => {
     const rawPhotos = (data?.adminPhotoHub?.photos ?? []) as Array<{
       id: string;
       title: string;
       fileName: string;
+      albumTitle?: string;
+      serviceDate?: string;
       fileSizeLabel: string;
       imageUrl: string;
       status: string;
@@ -167,6 +278,8 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
       rawPhotos.map((p) => ({
         id: p.id,
         fileName: p.fileName || p.title,
+        albumTitle: p.albumTitle,
+        serviceDate: p.serviceDate,
         fileSizeLabel: p.fileSizeLabel || "2.4 MB",
         imageUrl: p.imageUrl,
         alt: p.title,
@@ -180,63 +293,130 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
   }, [data]);
 
   async function handleFileSelect(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList);
+    const totalFiles = files.length;
+    const serviceLabel =
+      selectedServiceName || activeSelectedService?.name || "Sunday Worship Service";
+    const serviceDateLabel =
+      activeSelectedService?.serviceDate || new Date().toISOString().slice(0, 10);
+
     setUploadingFiles(true);
+    setStatusIsError(false);
+    setUploadProgressPct(10);
+    setUploadStatusText(`Preparing ${totalFiles} photo(s) from device gallery...`);
+    setUploadSubtext(`Target Service: ${serviceLabel} (${serviceDateLabel})`);
+    showNotification(`Starting upload of ${totalFiles} photo(s) for ${serviceLabel}...`, false);
+
     let uploadedCount = 0;
+    const uploadedPreviews: string[] = [];
 
-    for (const file of Array.from(files)) {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-        reader.onerror = () => reject(new Error("Failed to read file"));
-        reader.readAsDataURL(file);
-      });
-
-      const matchedService = serviceOptions.find((s) => s.name === selectedServiceName);
-      const isThanksgiving = selectedServiceName.toLowerCase().includes("thanksgiving");
-      const albumKey = isThanksgiving ? "thanksgiving" : "today";
-      const sizeMb = Math.max(0.1, file.size / (1024 * 1024)).toFixed(1);
+    for (let idx = 0; idx < files.length; idx += 1) {
+      const file = files[idx]!;
+      const stepBasePct = Math.round((idx / totalFiles) * 100);
+      setUploadProgressPct(Math.max(15, stepBasePct + 10));
+      setUploadStatusText(`Optimizing & uploading (${idx + 1} of ${totalFiles}): ${file.name}...`);
 
       try {
-        await uploadPhotoMutation({
+        const { dataUrl, sizeMbLabel } = await compressGalleryImageFile(file);
+        uploadedPreviews.push(dataUrl);
+        setRecentPreviews([...uploadedPreviews]);
+        setUploadProgressPct(Math.min(92, Math.round(((idx + 0.6) / totalFiles) * 100)));
+
+        const isThanksgiving = serviceLabel.toLowerCase().includes("thanksgiving");
+        const albumKey = isThanksgiving ? "thanksgiving" : "today";
+        const cleanTitle =
+          file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ") || "Service Moment";
+
+        const res = await uploadPhotoMutation({
           variables: {
             input: {
-              title: file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " "),
+              title: cleanTitle,
               fileName: file.name,
               albumKey,
-              albumTitle: `${selectedServiceName} — RCCG JESUS HOUSE, OGBOMOSHO`,
-              serviceDate: matchedService?.serviceDate ?? new Date().toLocaleDateString(),
+              albumTitle: serviceLabel,
+              serviceDate: serviceDateLabel,
               photographer: data?.me?.fullName ?? "Media Unit",
-              fileSizeLabel: `${sizeMb} MB`,
+              fileSizeLabel: sizeMbLabel,
               tags: ["Congregation"],
               status: "PUBLISHED",
               needsConsentCheck: false,
-              fileContentBase64: base64,
+              fileContentBase64: dataUrl,
             },
           },
         });
+
+        const uploadedPhoto = res.data?.uploadServicePhoto as
+          | {
+              id: string;
+              title: string;
+              fileName: string;
+              albumTitle?: string;
+              serviceDate?: string;
+              fileSizeLabel: string;
+              imageUrl: string;
+              status: string;
+              tags: string[];
+              needsConsentCheck: boolean;
+              daysLeftLabel: string;
+            }
+          | undefined;
+
+        if (uploadedPhoto) {
+          setCards((prev) => [
+            {
+              id: uploadedPhoto.id,
+              fileName: uploadedPhoto.fileName || uploadedPhoto.title,
+              albumTitle: uploadedPhoto.albumTitle || serviceLabel,
+              serviceDate: uploadedPhoto.serviceDate || serviceDateLabel,
+              fileSizeLabel: uploadedPhoto.fileSizeLabel || sizeMbLabel,
+              imageUrl: uploadedPhoto.imageUrl || dataUrl,
+              alt: uploadedPhoto.title,
+              status: "PUBLISHED",
+              expiryText: uploadedPhoto.daysLeftLabel || "Today",
+              tags: uploadedPhoto.tags?.length ? uploadedPhoto.tags : ["Congregation"],
+              needsConsentCheck: Boolean(uploadedPhoto.needsConsentCheck),
+            },
+            ...prev.filter((item) => item.id !== uploadedPhoto.id),
+          ]);
+        }
+
         uploadedCount += 1;
+        setUploadProgressPct(Math.round(((idx + 1) / totalFiles) * 100));
       } catch (err) {
-        showNotification(err instanceof Error ? err.message : "Failed to upload photo");
+        const errMsg = err instanceof Error ? err.message : "Failed to upload photo";
+        setUploadStatusText(`Upload error on ${file.name}`);
+        setUploadSubtext(errMsg);
+        showNotification(`Error uploading ${file.name}: ${errMsg}`, true);
       }
     }
 
     setUploadingFiles(false);
     event.target.value = "";
     if (uploadedCount > 0) {
+      setUploadProgressPct(100);
+      setUploadStatusText(
+        `✓ Uploaded ${uploadedCount} of ${totalFiles} photo(s) for ${serviceLabel}!`,
+      );
+      setUploadSubtext(
+        "Saved to Cloudinary & MongoDB — Members can now view and download them on /photos.",
+      );
       await refetch();
       showNotification(
-        `Uploaded ${uploadedCount} photo(s) to Cloudinary & saved to MongoDB gallery!`,
+        `✓ Successfully uploaded ${uploadedCount} photo(s) for "${serviceLabel}"! Members can now see them in the Photos gallery.`,
+        false,
       );
     }
   }
 
-  function showNotification(msg: string): void {
+  function showNotification(msg: string, isError: boolean = false): void {
+    setStatusIsError(isError);
     setStatusBanner(msg);
     setTimeout(() => {
       setStatusBanner(null);
-    }, 3200);
+    }, 6000);
   }
 
   async function handleCardDecision(
@@ -502,15 +682,44 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
           <div className="flex flex-col w-full">
             <div className="w-full px-4 sm:px-6 lg:px-space-xl py-space-lg flex flex-col gap-space-lg">
               {statusBanner && (
-                <div className="bg-primary text-on-primary px-space-md py-2.5 rounded-xl shadow-md flex items-center justify-between">
-                  <span className="font-label-md text-label-md">{statusBanner}</span>
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`fixed top-20 right-4 left-4 md:left-auto md:max-w-lg z-50 px-space-md py-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 border ${
+                    statusIsError
+                      ? "bg-error-container text-on-error-container border-error/30"
+                      : "bg-primary text-on-primary border-primary-container"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-[20px] shrink-0">
+                      {statusIsError ? "error" : "cloud_done"}
+                    </span>
+                    <span className="font-label-md text-label-md font-semibold">
+                      {statusBanner}
+                    </span>
+                  </div>
                   <button
-                    className="text-on-primary/80 hover:text-on-primary"
+                    className="opacity-80 hover:opacity-100 shrink-0"
                     onClick={() => setStatusBanner(null)}
                     type="button"
                   >
                     <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
+                </div>
+              )}
+
+              {queryError && (
+                <div
+                  role="alert"
+                  className="bg-error-container text-on-error-container px-space-md py-3 rounded-xl flex items-center justify-between gap-3 border border-error/25"
+                >
+                  <span className="font-label-sm text-label-sm font-semibold">
+                    Photo Hub Notice: {queryError.message}
+                  </span>
+                  <Link href="/login" className="underline font-bold text-xs">
+                    Sign In
+                  </Link>
                 </div>
               )}
 
@@ -742,7 +951,10 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         Album Workspace
                       </span>
                       <span className="font-label-sm text-label-sm px-2 py-0.5 bg-surface-container text-on-surface-variant rounded-md">
-                        ID: ALB-241117
+                        ID:{" "}
+                        {activeSelectedService?.id
+                          ? activeSelectedService.id.slice(-8).toUpperCase()
+                          : "LIVE"}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -755,13 +967,15 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                       <div className="relative">
                         <select
                           className="w-full h-12 pl-3 pr-10 bg-surface-container-low rounded-lg font-body-sm text-body-sm text-on-surface focus:outline-none focus:bg-surface-container-lowest appearance-none cursor-pointer"
-                          defaultValue="Sunday Thanksgiving Service - 17 Nov 2024"
+                          value={selectedServiceName}
+                          onChange={(e) => setSelectedServiceName(e.target.value)}
                           id="album-select"
                         >
-                          <option>Sunday Thanksgiving Service - 17 Nov 2024</option>
-                          <option>Midweek Communion Service - 13 Nov 2024</option>
-                          <option>Youth Ablaze Concert - 09 Nov 2024</option>
-                          <option>Holy Ghost Night (Lagos Regional) - 01 Nov 2024</option>
+                          {serviceOptions.map((svc) => (
+                            <option key={svc.id} value={svc.name}>
+                              {svc.serviceTag || svc.name} ({svc.serviceDate})
+                            </option>
+                          ))}
                         </select>
                         <span className="material-symbols-outlined absolute right-3 top-3 text-outline pointer-events-none text-[22px]">
                           expand_more
@@ -771,18 +985,20 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">event</span>
-                        17 November 2024
+                        {activeSelectedService?.serviceDate ?? "Today"}
                       </span>
                       <span className="px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-label-sm text-label-sm flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">church</span>
-                        Main Auditorium
+                        RCCG JESUS HOUSE, OGBOMOSHO
                       </span>
-                      <span className="px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">
-                          nest_clock_farsight_analog
+                      {activeSelectedService?.sermonTopic && (
+                        <span className="px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">
+                            auto_stories
+                          </span>
+                          {activeSelectedService.sermonTopic}
                         </span>
-                        08:30 - 11:45 WAT
-                      </span>
+                      )}
                     </div>
                   </div>
 
@@ -793,13 +1009,13 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         Ingest &amp; Upload
                       </span>
                       <span className="text-tertiary font-label-sm text-label-sm flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px]">bolt</span> CDN
-                        Turbo Active
+                        <span className="material-symbols-outlined text-[16px]">bolt</span>{" "}
+                        Cloudinary Active
                       </span>
                     </div>
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="relative group p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col items-center text-center cursor-pointer"
+                      className="relative group p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container transition-all flex flex-col items-center text-center cursor-pointer border-2 border-dashed border-outline-variant/50 hover:border-primary/50"
                     >
                       <input
                         ref={fileInputRef}
@@ -815,7 +1031,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                       <p className="font-label-lg text-label-lg text-primary font-semibold">
                         {uploadingFiles
                           ? "Uploading to Cloudinary..."
-                          : "Drag & drop RAW / JPEG photos"}
+                          : "Tap to select photos from device gallery"}
                       </p>
                       <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
                         or{" "}
@@ -824,74 +1040,70 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         </span>
                       </p>
                       <p className="font-label-sm text-label-sm text-outline mt-2">
-                        JPEG, HEIC, PNG • Uploaded directly to Cloudinary
+                        JPEG, HEIC, PNG • Auto-saved to Cloudinary &amp; MongoDB
                       </p>
                       <div className="mt-space-md px-space-sm py-1.5 bg-surface-container-lowest rounded-lg flex items-center gap-2 max-w-full">
                         <span className="material-symbols-outlined text-secondary text-[16px]">
                           compress
                         </span>
                         <span className="font-label-sm text-label-sm text-on-surface-variant text-left leading-tight truncate">
-                          Auto-optimizing for low-bandwidth mobile devices
+                          Client-optimized before upload for fast mobile performance
                         </span>
                       </div>
                     </div>
 
-                    {/* Active Upload Queue Card */}
-                    <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm">
+                    {/* Active Upload Queue Card with Live Feedback */}
+                    <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm border border-outline-variant/30">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-primary text-[20px]">
-                            sync
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`material-symbols-outlined text-[20px] ${uploadingFiles ? "text-primary animate-spin" : "text-secondary"}`}
+                          >
+                            {uploadingFiles ? "sync" : "cloud_done"}
                           </span>
-                          <span className="font-label-md text-label-md text-on-surface font-semibold">
-                            Uploading batch: DSC_4920 to DSC_4928
+                          <span className="font-label-md text-label-md text-on-surface font-semibold truncate">
+                            {uploadStatusText}
                           </span>
                         </div>
-                        <span className="font-label-sm text-label-sm text-primary font-bold">
-                          78%
+                        <span className="font-label-sm text-label-sm text-primary font-bold shrink-0 ml-2">
+                          {uploadProgressPct}%
                         </span>
                       </div>
                       <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
                         <div
                           className="bg-gradient-to-r from-primary to-secondary-container h-full rounded-full transition-all duration-300"
-                          style={{ width: "78%" }}
+                          style={{
+                            width: `${Math.max(uploadingFiles ? 8 : 0, uploadProgressPct)}%`,
+                          }}
                         />
                       </div>
                       <div className="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
-                        <span>8 photos (32.4 MB of 41.5 MB)</span>
-                        <span className="font-semibold text-secondary">4.2 MB/s</span>
+                        <span className="truncate">{uploadSubtext}</span>
+                        {uploadingFiles && (
+                          <span className="font-semibold text-secondary shrink-0 ml-2">
+                            Processing
+                          </span>
+                        )}
                       </div>
-                      <div className="pt-space-xs flex flex-col gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            className="w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary"
-                            defaultChecked
-                            type="checkbox"
-                          />
-                          <span className="font-label-sm text-label-sm text-on-surface">
-                            Auto-enhance lighting &amp; sanctuary white balance
+
+                      {/* Recent Gallery Previews Thumbnail Strip */}
+                      {recentPreviews.length > 0 && (
+                        <div className="pt-2 border-t border-outline-variant/20">
+                          <span className="font-label-sm text-[11px] text-on-surface-variant block mb-1.5 font-semibold">
+                            Batch Gallery Previews ({recentPreviews.length}):
                           </span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            className="w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary"
-                            defaultChecked
-                            type="checkbox"
-                          />
-                          <span className="font-label-sm text-label-sm text-on-surface">
-                            Tag Sanctuary Choir &amp; Pastoral Ministers
-                          </span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            className="w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary"
-                            type="checkbox"
-                          />
-                          <span className="font-label-sm text-label-sm text-on-surface">
-                            Detect &amp; blur underage worshippers automatically
-                          </span>
-                        </label>
-                      </div>
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                            {recentPreviews.map((previewUrl, idx) => (
+                              <img
+                                key={idx}
+                                src={previewUrl}
+                                alt={`Uploaded Preview ${idx + 1}`}
+                                className="w-12 h-12 rounded-lg object-cover border border-outline-variant/40 shadow-xs shrink-0"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -926,7 +1138,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                           onClick={() => setActiveTab("ALL")}
                           type="button"
                         >
-                          All Photos (24)
+                          All Photos ({cards.length})
                         </button>
                         <button
                           className={`px-space-md py-1.5 rounded-md font-label-md text-label-md whitespace-nowrap ${
@@ -937,7 +1149,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                           onClick={() => setActiveTab("PUBLISHED")}
                           type="button"
                         >
-                          Published (18)
+                          Published ({cards.filter((c) => c.status !== "PENDING").length})
                         </button>
                         <button
                           className={`px-space-md py-1.5 rounded-md font-label-md text-label-md whitespace-nowrap flex items-center gap-1.5 ${
@@ -950,7 +1162,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                         >
                           <span>Pending Review</span>
                           <span className="px-1.5 py-0.2 bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold rounded-full">
-                            6
+                            {cards.filter((c) => c.status === "PENDING").length}
                           </span>
                         </button>
                         <button
@@ -962,7 +1174,7 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                           onClick={() => setActiveTab("FLAGGED")}
                           type="button"
                         >
-                          Flagged (0)
+                          Flagged ({cards.filter((c) => c.needsConsentCheck).length})
                         </button>
                       </div>
 
@@ -1207,62 +1419,69 @@ export default function AdminPhotoModerationHubPage(): ReactElement {
                   </div>
 
                   {/* Sticky Floating Multi-Select Batch Action Footer */}
-                  <div className="sticky bottom-6 z-30 w-full bg-inverse-surface/95 backdrop-blur-md text-inverse-on-surface rounded-2xl p-space-md shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-space-md mt-space-md">
-                    <div className="flex items-center gap-space-md">
-                      <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
-                        <span className="material-symbols-outlined text-[22px]">checklist</span>
+                  {selectedIds.length > 0 && (
+                    <div className="sticky bottom-6 z-30 w-full bg-inverse-surface/95 backdrop-blur-md text-inverse-on-surface rounded-2xl p-space-md shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-space-md mt-space-md">
+                      <div className="flex items-center gap-space-md">
+                        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
+                          <span className="material-symbols-outlined text-[22px]">checklist</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-label-lg text-label-lg font-semibold text-inverse-on-surface">
+                            {selectedIds.length} Photo{selectedIds.length > 1 ? "s" : ""} Selected
+                          </span>
+                          <span className="font-body-sm text-body-sm text-surface-dim">
+                            Selected for bulk publishing or removal from gallery
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-label-lg text-label-lg font-semibold text-inverse-on-surface">
-                          6 Photos Selected for Moderation
-                        </span>
-                        <span className="font-body-sm text-body-sm text-surface-dim">
-                          Pending review clearance for congregation app release
-                        </span>
+                      <div className="flex items-center gap-space-sm flex-wrap">
+                        <button
+                          className="h-10 px-space-md rounded-lg bg-surface-variant/20 hover:bg-surface-variant/30 text-inverse-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors"
+                          onClick={() => {
+                            setSelectedIds([]);
+                          }}
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                          <span>Clear Selection</span>
+                        </button>
+                        <button
+                          className="h-10 px-space-md rounded-lg bg-error hover:bg-error/90 text-on-error font-label-md text-label-md flex items-center gap-1.5 transition-colors"
+                          onClick={() => {
+                            setCards((prev) => prev.filter((c) => !selectedIds.includes(c.id)));
+                            const count = selectedIds.length;
+                            setSelectedIds([]);
+                            showNotification(`${count} photo(s) removed.`);
+                          }}
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                          <span>Delete ({selectedIds.length})</span>
+                        </button>
+                        <button
+                          className="h-10 px-space-lg rounded-lg bg-secondary-container hover:bg-secondary text-on-secondary-container font-label-md text-label-md font-bold flex items-center gap-2 shadow-md transition-all active:scale-[0.98]"
+                          onClick={() => {
+                            setCards((prev) =>
+                              prev.map((c) =>
+                                selectedIds.includes(c.id)
+                                  ? { ...c, status: "PUBLISHED", needsConsentCheck: false }
+                                  : c,
+                              ),
+                            );
+                            const count = selectedIds.length;
+                            setSelectedIds([]);
+                            showNotification(
+                              `Bulk published ${count} photo(s) to the RCCG JESUS HOUSE, OGBOMOSHO gallery!`,
+                            );
+                          }}
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">publish</span>
+                          <span>Bulk Publish ({selectedIds.length})</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-space-sm flex-wrap">
-                      <button
-                        className="h-10 px-space-md rounded-lg bg-surface-variant/20 hover:bg-surface-variant/30 text-inverse-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors"
-                        onClick={() => showNotification("Master ZIP archive download started.")}
-                        type="button"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">folder_zip</span>
-                        <span>Download Master ZIP</span>
-                      </button>
-                      <button
-                        className="h-10 px-space-md rounded-lg bg-error hover:bg-error/90 text-on-error font-label-md text-label-md flex items-center gap-1.5 transition-colors"
-                        onClick={() => {
-                          setCards((prev) => prev.filter((c) => !selectedIds.includes(c.id)));
-                          setSelectedIds([]);
-                          showNotification("Selected photos permanently deleted.");
-                        }}
-                        type="button"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                        <span>Delete Selected</span>
-                      </button>
-                      <button
-                        className="h-10 px-space-lg rounded-lg bg-secondary-container hover:bg-secondary text-on-secondary-container font-label-md text-label-md font-bold flex items-center gap-2 shadow-md transition-all active:scale-[0.98]"
-                        onClick={() => {
-                          setCards((prev) =>
-                            prev.map((c) => ({
-                              ...c,
-                              status: "PUBLISHED",
-                              needsConsentCheck: false,
-                            })),
-                          );
-                          showNotification(
-                            "Bulk published 6 photos to the ChurchConnect member gallery.",
-                          );
-                        }}
-                        type="button"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">publish</span>
-                        <span>Bulk Publish (6)</span>
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

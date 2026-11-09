@@ -7,7 +7,7 @@ import { type ReactElement, useState } from "react";
 import { hasPhotoUploadAccess } from "@/auth/permissions";
 
 const SERVICE_PHOTOS_QUERY = gql`
-  query GetServicePhotos($albumKey: String) {
+  query GetServicePhotos {
     me {
       id
       fullName
@@ -15,6 +15,26 @@ const SERVICE_PHOTOS_QUERY = gql`
       department
       activities
       avatarUrl
+    }
+    activeService {
+      id
+      name
+      serviceTag
+      sermonTopic
+      serviceDate
+    }
+    services {
+      id
+      name
+      serviceTag
+      sermonTopic
+      serviceDate
+    }
+    myAttendanceHistory {
+      id
+      serviceId
+      serviceName
+      serviceDate
     }
     servicePhotos(albumKey: "all") {
       id
@@ -35,7 +55,11 @@ const SERVICE_PHOTOS_QUERY = gql`
 interface GalleryPhotoItem {
   id: string;
   title: string;
-  albumKey: "today" | "thanksgiving" | "choir";
+  fileName: string;
+  albumKey: string;
+  albumTitle: string;
+  serviceDate: string;
+  photographer: string;
   imageUrl: string;
   alt: string;
   badgeText: string;
@@ -44,16 +68,13 @@ interface GalleryPhotoItem {
 
 export default function PhotosGalleryPage(): ReactElement {
   const [showBanner, setShowBanner] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<"all" | "today" | "thanksgiving" | "choir">(
-    "all",
-  );
+  const [activeFilter, setActiveFilter] = useState<string>("all");
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewPhoto, setPreviewPhoto] = useState<GalleryPhotoItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const { data } = useQuery(SERVICE_PHOTOS_QUERY, {
-    variables: { albumKey: activeFilter },
+  const { data, loading } = useQuery(SERVICE_PHOTOS_QUERY, {
     fetchPolicy: "network-only",
   });
 
@@ -61,7 +82,11 @@ export default function PhotosGalleryPage(): ReactElement {
     (data?.servicePhotos as Array<{
       id: string;
       title: string;
-      albumKey: "today" | "thanksgiving" | "choir";
+      fileName: string;
+      albumKey: string;
+      albumTitle: string;
+      serviceDate: string;
+      photographer: string;
       imageUrl: string;
       daysLeftLabel: string;
       daysLeftCount: number;
@@ -69,7 +94,11 @@ export default function PhotosGalleryPage(): ReactElement {
   ).map((p) => ({
     id: p.id,
     title: p.title,
-    albumKey: p.albumKey,
+    fileName: p.fileName || `${p.title}.jpg`,
+    albumKey: p.albumKey || "today",
+    albumTitle: p.albumTitle || "Sunday Service — RCCG JESUS HOUSE, OGBOMOSHO",
+    serviceDate: p.serviceDate || "Recent Service",
+    photographer: p.photographer || "Media Unit",
     imageUrl: p.imageUrl,
     alt: p.title,
     badgeText: p.daysLeftLabel,
@@ -83,9 +112,25 @@ export default function PhotosGalleryPage(): ReactElement {
             : "neutral",
   }));
 
-  const filteredPhotos = allPhotos.filter(
-    (item) => activeFilter === "all" || item.albumKey === activeFilter,
+  const attendedHistory =
+    (data?.myAttendanceHistory as Array<{
+      id: string;
+      serviceId: string;
+      serviceName: string;
+      serviceDate: string;
+    }>) ?? [];
+
+  const distinctServiceAlbums = Array.from(
+    new Set(allPhotos.map((p) => p.albumTitle).filter(Boolean)),
   );
+
+  const filteredPhotos = allPhotos.filter((item) => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "today" || activeFilter === "thanksgiving" || activeFilter === "choir") {
+      return item.albumKey === activeFilter;
+    }
+    return item.albumTitle === activeFilter;
+  });
   const todayCount = allPhotos.filter((p) => p.albumKey === "today").length;
   const thanksgivingCount = allPhotos.filter((p) => p.albumKey === "thanksgiving").length;
   const choirCount = allPhotos.filter((p) => p.albumKey === "choir").length;
@@ -244,6 +289,27 @@ export default function PhotosGalleryPage(): ReactElement {
             </button>
           </div>
 
+          {/* Attended Service Banner if member has attendance history */}
+          {attendedHistory.length > 0 && (
+            <div className="px-margin mt-space-sm">
+              <div className="rounded-xl bg-primary-fixed/40 border border-primary/15 px-3.5 py-2.5 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-primary text-[18px]">
+                    verified
+                  </span>
+                  <span className="font-label-sm text-label-sm text-on-surface truncate">
+                    Last Service Attended:{" "}
+                    <strong className="text-primary">{attendedHistory[0]?.serviceName}</strong> (
+                    {attendedHistory[0]?.serviceDate})
+                  </span>
+                </div>
+                <span className="font-label-sm text-[11px] font-bold text-secondary">
+                  {allPhotos.length} Service Photo(s) Available
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Horizontal Filter Carousel */}
           <div className="mt-space-md w-full overflow-x-auto no-scrollbar flex items-center gap-space-sm px-margin py-1">
             <button
@@ -261,6 +327,26 @@ export default function PhotosGalleryPage(): ReactElement {
               </span>
             </button>
 
+            {distinctServiceAlbums.map((albumTitle) => {
+              const count = allPhotos.filter((p) => p.albumTitle === albumTitle).length;
+              return (
+                <button
+                  key={albumTitle}
+                  className={`whitespace-nowrap h-9 px-space-md rounded-full font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5 ${
+                    activeFilter === albumTitle
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                  }`}
+                  onClick={() => setActiveFilter(albumTitle)}
+                  type="button"
+                >
+                  <span className="w-2 h-2 rounded-full bg-secondary" />
+                  <span className="max-w-[220px] truncate">{albumTitle}</span>
+                  <span className="font-label-sm text-label-sm opacity-75">({count})</span>
+                </button>
+              );
+            })}
+
             <button
               className={`whitespace-nowrap h-9 px-space-md rounded-full font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5 ${
                 activeFilter === "today"
@@ -270,7 +356,6 @@ export default function PhotosGalleryPage(): ReactElement {
               onClick={() => setActiveFilter("today")}
               type="button"
             >
-              <span className="w-2 h-2 rounded-full bg-secondary" />
               <span>Sunday Service</span>
               <span className="font-label-sm text-label-sm opacity-75">
                 ({todayCount}) · 7d left
@@ -288,24 +373,24 @@ export default function PhotosGalleryPage(): ReactElement {
             >
               <span>Thanksgiving Service</span>
               <span className="font-label-sm text-label-sm opacity-75">
-                ({thanksgivingCount}) · 3d left
+                ({thanksgivingCount}) · 7d left
               </span>
             </button>
 
-            <button
-              className={`whitespace-nowrap h-9 px-space-md rounded-full font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5 ${
-                activeFilter === "choir"
-                  ? "bg-primary text-on-primary"
-                  : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-              }`}
-              onClick={() => setActiveFilter("choir")}
-              type="button"
-            >
-              <span>Choir Concert</span>
-              <span className="font-label-sm text-label-sm opacity-75">
-                ({choirCount}) · 1d left
-              </span>
-            </button>
+            {choirCount > 0 && (
+              <button
+                className={`whitespace-nowrap h-9 px-space-md rounded-full font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5 ${
+                  activeFilter === "choir"
+                    ? "bg-primary text-on-primary"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+                onClick={() => setActiveFilter("choir")}
+                type="button"
+              >
+                <span>Choir Concert</span>
+                <span className="font-label-sm text-label-sm opacity-75">({choirCount})</span>
+              </button>
+            )}
           </div>
 
           {/* Selection Status Bar */}
@@ -343,68 +428,77 @@ export default function PhotosGalleryPage(): ReactElement {
 
           {/* Responsive Photo Grid (3 cols on mobile, 4 cols on tablet/desktop) */}
           <div className="px-margin mt-space-md">
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-              {filteredPhotos.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
-                return (
-                  <div
-                    className={`relative aspect-square rounded-xl overflow-hidden shadow-sm bg-surface-container-low group cursor-pointer transition-all ${
-                      isSelected ? "scale-[0.96] opacity-90" : ""
-                    }`}
-                    key={item.id}
-                    onClick={() => handleCardClick(item)}
-                  >
-                    <img
-                      alt={item.alt}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      src={item.imageUrl}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/60 via-transparent to-transparent opacity-80" />
+            {loading && allPhotos.length === 0 ? (
+              <div className="py-10 text-center text-on-surface-variant font-body-sm">
+                Loading service photos from Cloudinary...
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-4">
+                {filteredPhotos.map((item) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <div
+                      className={`relative aspect-square rounded-xl overflow-hidden shadow-sm bg-surface-container-low group cursor-pointer transition-all ${
+                        isSelected ? "scale-[0.96] opacity-90" : ""
+                      }`}
+                      key={item.id}
+                      onClick={() => handleCardClick(item)}
+                    >
+                      <img
+                        alt={item.alt}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        src={item.imageUrl}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/75 via-transparent to-transparent opacity-90" />
 
-                    {/* Days-left / Today Badge */}
-                    {item.badgeVariant === "today" && (
-                      <span className="absolute top-1.5 left-1.5 bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
-                        <span className="w-1 h-1 rounded-full bg-on-tertiary-fixed" />{" "}
-                        {item.badgeText}
-                      </span>
-                    )}
-                    {item.badgeVariant === "neutral" && (
-                      <span className="absolute top-1.5 left-1.5 bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm">
-                        {item.badgeText}
-                      </span>
-                    )}
-                    {item.badgeVariant === "amber" && (
-                      <span className="absolute top-1.5 left-1.5 bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm">
-                        {item.badgeText}
-                      </span>
-                    )}
-                    {item.badgeVariant === "urgent" && (
-                      <span className="absolute top-1.5 left-1.5 bg-error-container text-on-error-container font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm font-semibold flex items-center gap-0.5">
-                        <span className="material-symbols-outlined text-[11px]">alarm</span>{" "}
-                        {item.badgeText}
-                      </span>
-                    )}
+                      {/* Days-left / Today Badge */}
+                      {item.badgeVariant === "today" && (
+                        <span className="absolute top-1.5 left-1.5 bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
+                          <span className="w-1 h-1 rounded-full bg-on-tertiary-fixed" />{" "}
+                          {item.badgeText}
+                        </span>
+                      )}
+                      {item.badgeVariant === "neutral" && (
+                        <span className="absolute top-1.5 left-1.5 bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm">
+                          {item.badgeText}
+                        </span>
+                      )}
+                      {item.badgeVariant === "amber" && (
+                        <span className="absolute top-1.5 left-1.5 bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm">
+                          {item.badgeText}
+                        </span>
+                      )}
+                      {item.badgeVariant === "urgent" && (
+                        <span className="absolute top-1.5 left-1.5 bg-error-container text-on-error-container font-label-sm text-[10px] leading-tight px-1.5 py-0.5 rounded-full shadow-sm font-semibold flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[11px]">alarm</span>{" "}
+                          {item.badgeText}
+                        </span>
+                      )}
 
-                    {/* Select Checkbox */}
-                    {selectMode && (
-                      <div
-                        className={`absolute top-1.5 right-1.5 flex w-5 h-5 rounded-full items-center justify-center shadow-sm ${
-                          isSelected ? "bg-primary text-on-primary" : "bg-surface/90 text-primary"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[14px]">check</span>
+                      {/* Select Checkbox */}
+                      {selectMode && (
+                        <div
+                          className={`absolute top-1.5 right-1.5 flex w-5 h-5 rounded-full items-center justify-center shadow-sm ${
+                            isSelected ? "bg-primary text-on-primary" : "bg-surface/90 text-primary"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]">check</span>
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col text-on-primary">
+                        <span className="font-label-sm text-[11px] truncate drop-shadow-sm font-semibold">
+                          {item.title}
+                        </span>
+                        <span className="text-[9px] opacity-85 truncate drop-shadow-sm">
+                          {item.albumTitle}
+                        </span>
                       </div>
-                    )}
-
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between text-on-primary">
-                      <span className="font-label-sm text-[11px] truncate drop-shadow-sm font-medium">
-                        {item.title}
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Single Full-Screen Photo Preview Modal */}
@@ -412,11 +506,11 @@ export default function PhotosGalleryPage(): ReactElement {
             <div className="fixed inset-0 z-50 bg-inverse-surface/80 backdrop-blur-md flex items-center justify-center p-margin">
               <div className="relative w-full max-w-sm bg-surface rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                 <div className="p-space-sm flex items-center justify-between bg-surface">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <span className="material-symbols-outlined text-primary text-[20px]">
                       auto_awesome
                     </span>
-                    <span className="font-label-md text-label-md font-semibold text-on-surface">
+                    <span className="font-label-md text-label-md font-semibold text-on-surface truncate">
                       {previewPhoto.title}
                     </span>
                   </div>
@@ -436,17 +530,17 @@ export default function PhotosGalleryPage(): ReactElement {
                   />
                 </div>
                 <div className="p-space-md bg-surface flex items-center justify-between gap-space-sm">
-                  <div className="flex flex-col">
-                    <span className="font-label-sm text-label-sm text-secondary font-medium">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-label-sm text-label-sm text-secondary font-medium truncate">
                       {previewPhoto.badgeText === "Today"
                         ? "Added Today · Expires in 7 days"
                         : previewPhoto.badgeText}
                     </span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">
-                      Sunday Service · High Resolution
+                    <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
+                      {previewPhoto.albumTitle} · {previewPhoto.serviceDate}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Link
                       className="h-10 px-3 rounded-xl bg-surface-container text-primary font-label-md text-label-md flex items-center gap-1 hover:bg-surface-container-high"
                       href={`/photos/${previewPhoto.id}`}
@@ -454,17 +548,20 @@ export default function PhotosGalleryPage(): ReactElement {
                       <span className="material-symbols-outlined text-[18px]">open_in_full</span>
                       <span>Viewer</span>
                     </Link>
-                    <button
+                    <a
+                      href={previewPhoto.imageUrl}
+                      download={previewPhoto.fileName}
+                      target="_blank"
+                      rel="noreferrer"
                       className="h-10 px-space-md rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1 shadow-sm active:scale-95 hover:bg-primary-container"
                       onClick={() => {
                         setPreviewPhoto(null);
                         triggerToast("Photo saved to your device!");
                       }}
-                      type="button"
                     >
                       <span className="material-symbols-outlined text-[18px]">download</span>
                       <span>Save</span>
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>

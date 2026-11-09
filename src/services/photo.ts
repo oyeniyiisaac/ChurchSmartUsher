@@ -205,13 +205,20 @@ export async function uploadServicePhoto(
   let fileSizeBytes = input.fileSizeBytes ?? 0;
 
   if (!isTest && input.fileContentBase64 && input.fileContentBase64.trim().length > 0) {
-    const uploaded = await uploadImageToCloudinary({
-      fileContentBase64: input.fileContentBase64,
-      folder: "rccg_jesus_house_ogbomosho/service_photos",
-    });
-    resolvedImageUrl = uploaded.secureUrl;
-    storageKey = uploaded.publicId;
-    fileSizeBytes = uploaded.bytes || Buffer.from(input.fileContentBase64, "base64").byteLength;
+    try {
+      const uploaded = await uploadImageToCloudinary({
+        fileContentBase64: input.fileContentBase64,
+        folder: "rccg_jesus_house_ogbomosho/service_photos",
+      });
+      resolvedImageUrl = uploaded.secureUrl;
+      storageKey = uploaded.publicId;
+      fileSizeBytes = uploaded.bytes || Buffer.from(input.fileContentBase64, "base64").byteLength;
+    } catch {
+      resolvedImageUrl = input.fileContentBase64.startsWith("data:")
+        ? input.fileContentBase64
+        : `data:image/jpeg;base64,${input.fileContentBase64}`;
+      fileSizeBytes = Buffer.from(input.fileContentBase64, "base64").byteLength;
+    }
   } else if (isTest) {
     const filePath = getPhotoStorageFilePath(storageKey);
     const fileBuffer = input.fileContentBase64
