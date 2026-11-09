@@ -135,8 +135,10 @@ export const resolvers = {
       _args: unknown,
       context: GraphQLContext,
     ): Promise<AttendanceRecordInfo[]> => {
-      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
-      return getMyAttendanceHistory(authenticated.id);
+      if (!context.member) {
+        return [];
+      }
+      return getMyAttendanceHistory(context.member.id);
     },
 
     myStreak: async (
@@ -457,6 +459,30 @@ export const resolvers = {
     ): Promise<MarkPresentResult> => {
       const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
       return verifyCheckinCode(authenticated, args);
+    },
+  },
+
+  AttendanceRecord: {
+    serviceName: async (parent: { serviceId?: string }): Promise<string> => {
+      if (!parent.serviceId) return "Sunday Worship Service";
+      const services = await listServices();
+      const svc = services.find((s) => s.id === parent.serviceId);
+      return svc?.name || "Sunday Worship Service";
+    },
+    serviceDate: async (parent: { serviceId?: string; checkedInAt?: string }): Promise<string> => {
+      if (!parent.serviceId) {
+        return parent.checkedInAt
+          ? parent.checkedInAt.slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+      }
+      const services = await listServices();
+      const svc = services.find((s) => s.id === parent.serviceId);
+      return (
+        svc?.serviceDate ||
+        (parent.checkedInAt
+          ? parent.checkedInAt.slice(0, 10)
+          : new Date().toISOString().slice(0, 10))
+      );
     },
   },
 };

@@ -123,6 +123,8 @@ export const typeDefs = `#graphql
   type AttendanceRecord {
     id: ID!
     serviceId: ID!
+    serviceName: String
+    serviceDate: String
     memberId: ID
     memberName: String!
     memberPhone: String!

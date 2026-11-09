@@ -76,7 +76,8 @@ export default function PhotosGalleryPage(): ReactElement {
   const [previewPhoto, setPreviewPhoto] = useState<GalleryPhotoItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const { data, loading } = useQuery(SERVICE_PHOTOS_QUERY, {
+  const { data, loading, error } = useQuery(SERVICE_PHOTOS_QUERY, {
+    errorPolicy: "all",
     fetchPolicy: "network-only",
   });
 
