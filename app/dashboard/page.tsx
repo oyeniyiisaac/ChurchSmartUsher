@@ -139,8 +139,7 @@ export default function DashboardPage(): ReactNode {
   async function handleSignOut(): Promise<void> {
     await logoutMutation();
     await client.resetStore();
-    router.push("/login");
-    router.refresh();
+    window.location.assign("/login");
   }
 
   return (

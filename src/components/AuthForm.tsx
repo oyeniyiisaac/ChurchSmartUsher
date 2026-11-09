@@ -134,19 +134,22 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
     try {
       if (mode === "login") {
+        const target = returnToParam || "/dashboard";
         const { data } = await loginMutation({
           variables: {
             input: {
               phone,
               password,
-              returnTo: returnToParam,
+              returnTo: target,
             },
           },
         });
-        const redirectTo = data?.login?.redirectTo ?? "/dashboard";
-        router.push(redirectTo);
-        router.refresh();
+        const redirectTo = returnToParam || data?.login?.redirectTo || "/dashboard";
+        // Clean navigation ensures the session cookie is attached to the page request
+        // and layout Apollo client mounts fresh with authenticated member context.
+        window.location.assign(redirectTo);
       } else {
+        const target = returnToParam || "/dashboard";
         const { data } = await registerMutation({
           variables: {
             input: {
@@ -157,13 +160,12 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
               department,
               password,
               consentGiven,
-              returnTo: returnToParam,
+              returnTo: target,
             },
           },
         });
-        const redirectTo = data?.register?.redirectTo ?? "/dashboard";
-        router.push(redirectTo);
-        router.refresh();
+        const redirectTo = returnToParam || data?.register?.redirectTo || "/dashboard";
+        window.location.assign(redirectTo);
       }
     } catch (error) {
       if (error instanceof Error) {

@@ -49,7 +49,10 @@ export function isPublicRoute(pathname: string): boolean {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/checkin" ||
-    pathname.startsWith("/checkin/")
+    pathname.startsWith("/checkin/") ||
+    pathname === "/streak" ||
+    pathname === "/photos" ||
+    pathname.startsWith("/photos/")
   );
 }
 
