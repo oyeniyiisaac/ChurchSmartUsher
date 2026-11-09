@@ -45,6 +45,7 @@ const REQUEST_AUTH_OTP_MUTATION = gql`
       expiresAt
       code
       whatsappDeepLink
+      smsDeepLink
       deliveryNote
     }
   }
@@ -117,6 +118,7 @@ interface RequestAuthOtpData {
     expiresAt: string;
     code: string;
     whatsappDeepLink?: string;
+    smsDeepLink?: string;
     deliveryNote: string;
   };
 }
@@ -248,9 +250,10 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
       if (res.data?.requestAuthOtp) {
         setOtpDispatchedInfo(res.data.requestAuthOtp);
+        setOtpCode(res.data.requestAuthOtp.code);
         setOtpStep("VERIFY");
         setInfoMessage(
-          `Instant code dispatched to ${res.data.requestAuthOtp.maskedPhone} via ${res.data.requestAuthOtp.channel}.`,
+          `Instant code ${res.data.requestAuthOtp.code} generated for ${res.data.requestAuthOtp.maskedPhone}. Auto-filled below!`,
         );
       }
     } catch (err) {
@@ -303,7 +306,11 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
       if (res.data?.requestAuthOtp) {
         setForgotDispatchedInfo(res.data.requestAuthOtp);
+        setForgotCode(res.data.requestAuthOtp.code);
         setForgotStep("RESET");
+        setInfoMessage(
+          `Password reset code ${res.data.requestAuthOtp.code} generated for ${res.data.requestAuthOtp.maskedPhone}. Auto-filled below!`,
+        );
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to send password reset code.");
@@ -917,32 +924,76 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 ) : (
                   <div className="flex flex-col gap-4">
                     {forgotDispatchedInfo && (
-                      <div className="p-3 bg-secondary-fixed/20 border border-secondary-fixed/30 rounded-xl text-on-surface text-body-sm flex flex-col gap-2">
-                        <div className="flex items-start gap-2">
-                          <span className="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">
-                            verified
-                          </span>
-                          <div>
-                            <p className="font-semibold text-label-sm">
-                              {forgotDispatchedInfo.deliveryNote}
-                            </p>
-                            <p className="text-xs text-on-surface-variant">
-                              Code expires in 10 minutes.
-                            </p>
+                      <div className="flex flex-col gap-2">
+                        {/* Prominent On-Screen OTP Box */}
+                        <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 shadow-sm">
+                          <div className="flex items-center gap-1.5 text-primary font-semibold text-xs uppercase tracking-wider">
+                            <span className="material-symbols-outlined text-[18px]">key</span>
+                            <span>Your Password Reset Code</span>
+                          </div>
+                          <div className="font-mono text-3xl sm:text-4xl font-extrabold tracking-[0.25em] text-primary bg-surface-container-lowest px-6 py-2 rounded-xl border border-primary/20 shadow-inner select-all">
+                            {forgotDispatchedInfo.code}
+                          </div>
+                          <p className="text-xs text-on-surface-variant">
+                            Generated for{" "}
+                            <span className="font-semibold text-on-surface">
+                              {forgotDispatchedInfo.maskedPhone}
+                            </span>
+                            . Auto-filled below!
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForgotCode(forgotDispatchedInfo.code);
+                                setInfoMessage("Code auto-filled!");
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">
+                                touch_app
+                              </span>
+                              Auto-Fill ({forgotDispatchedInfo.code})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void navigator.clipboard?.writeText(forgotDispatchedInfo.code);
+                                setInfoMessage("Code copied to clipboard!");
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface text-xs font-medium hover:bg-surface-container transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">
+                                content_copy
+                              </span>
+                              Copy
+                            </button>
                           </div>
                         </div>
 
-                        {forgotDispatchedInfo.whatsappDeepLink && (
-                          <a
-                            href={forgotDispatchedInfo.whatsappDeepLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full h-10 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-1"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">chat</span>
-                            <span>Open WhatsApp Reset Code</span>
-                          </a>
-                        )}
+                        {/* Dispatch deep links */}
+                        <div className="flex flex-col gap-2 mt-1">
+                          {forgotDispatchedInfo.whatsappDeepLink && (
+                            <a
+                              href={forgotDispatchedInfo.whatsappDeepLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full h-10 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chat</span>
+                              <span>Open Code in WhatsApp (Free)</span>
+                            </a>
+                          )}
+                          {forgotDispatchedInfo.smsDeepLink && (
+                            <a
+                              href={forgotDispatchedInfo.smsDeepLink}
+                              className="w-full h-10 rounded-lg bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">sms</span>
+                              <span>Open Code in Phone SMS Messages</span>
+                            </a>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1216,32 +1267,76 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   ) : (
                     <div className="flex flex-col gap-3">
                       {otpDispatchedInfo && (
-                        <div className="p-3 bg-secondary-fixed/20 border border-secondary-fixed/30 rounded-xl text-on-surface text-body-sm flex flex-col gap-2">
-                          <div className="flex items-start gap-2">
-                            <span className="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">
-                              verified
-                            </span>
-                            <div>
-                              <p className="font-semibold text-label-sm">
-                                {otpDispatchedInfo.deliveryNote}
-                              </p>
-                              <p className="text-xs text-on-surface-variant">
-                                Code expires in 10 minutes.
-                              </p>
+                        <div className="flex flex-col gap-2">
+                          {/* Prominent On-Screen OTP Box */}
+                          <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 shadow-sm my-1">
+                            <div className="flex items-center gap-1.5 text-primary font-semibold text-xs uppercase tracking-wider">
+                              <span className="material-symbols-outlined text-[18px]">key</span>
+                              <span>Your Instant Login OTP Code</span>
+                            </div>
+                            <div className="font-mono text-3xl sm:text-4xl font-extrabold tracking-[0.25em] text-primary bg-surface-container-lowest px-6 py-2.5 rounded-xl border border-primary/20 shadow-inner select-all">
+                              {otpDispatchedInfo.code}
+                            </div>
+                            <p className="text-xs text-on-surface-variant">
+                              Generated for{" "}
+                              <span className="font-semibold text-on-surface">
+                                {otpDispatchedInfo.maskedPhone}
+                              </span>
+                              . Auto-filled below!
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOtpCode(otpDispatchedInfo.code);
+                                  setInfoMessage("Code auto-filled!");
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[15px]">
+                                  touch_app
+                                </span>
+                                Auto-Fill ({otpDispatchedInfo.code})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void navigator.clipboard?.writeText(otpDispatchedInfo.code);
+                                  setInfoMessage("Code copied to clipboard!");
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface text-xs font-medium hover:bg-surface-container transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[15px]">
+                                  content_copy
+                                </span>
+                                Copy Code
+                              </button>
                             </div>
                           </div>
 
-                          {otpDispatchedInfo.whatsappDeepLink && (
-                            <a
-                              href={otpDispatchedInfo.whatsappDeepLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full h-11 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors mt-1"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">chat</span>
-                              <span>Open WhatsApp Code (Free)</span>
-                            </a>
-                          )}
+                          {/* Direct Mobile Links */}
+                          <div className="flex flex-col gap-2 mt-1">
+                            {otpDispatchedInfo.whatsappDeepLink && (
+                              <a
+                                href={otpDispatchedInfo.whatsappDeepLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full h-11 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">chat</span>
+                                <span>Open Code in WhatsApp (Free)</span>
+                              </a>
+                            )}
+                            {otpDispatchedInfo.smsDeepLink && (
+                              <a
+                                href={otpDispatchedInfo.smsDeepLink}
+                                className="w-full h-11 rounded-lg bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">sms</span>
+                                <span>Open in Phone SMS Messages</span>
+                              </a>
+                            )}
+                          </div>
                         </div>
                       )}
 

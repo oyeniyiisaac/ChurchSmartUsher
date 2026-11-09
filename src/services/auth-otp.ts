@@ -28,6 +28,7 @@ export interface OtpDispatchResult {
   expiresAt: string;
   code: string;
   whatsappDeepLink?: string;
+  smsDeepLink?: string;
   deliveryNote: string;
 }
 
@@ -150,6 +151,19 @@ export function buildWhatsAppVerificationLink(
 }
 
 /**
+ * Builds a native device SMS messaging link (sms:...) to open the phone's SMS app directly.
+ */
+export function buildSmsVerificationLink(phone: string, code: string, purpose: OtpPurpose): string {
+  const cleanPhone = phone.replace(/[^\d+]/g, "");
+  const actionText =
+    purpose === "LOGIN"
+      ? "RCCG JESUS HOUSE OGBOMOSHO Instant Login Code"
+      : "RCCG JESUS HOUSE OGBOMOSHO Password Reset Code";
+  const body = encodeURIComponent(`Shalom! Your ${actionText} is: ${code}. Valid for 10 minutes.`);
+  return `sms:${cleanPhone}?body=${body}`;
+}
+
+/**
  * Request an instant OTP for either Instant Login or Password Reset.
  */
 export async function requestAuthOtp(input: {
@@ -226,6 +240,9 @@ export async function requestAuthOtp(input: {
       ? buildWhatsAppVerificationLink(normalizedPhone, code, purpose)
       : undefined;
 
+  const smsDeepLink =
+    channel === "SMS" ? buildSmsVerificationLink(normalizedPhone, code, purpose) : undefined;
+
   const deliveryNote =
     channel === "WHATSAPP"
       ? `A 6-digit ${purpose === "LOGIN" ? "Instant Login" : "Password Reset"} code was generated for ${maskPhoneNumber(normalizedPhone)} via WhatsApp.`
@@ -239,6 +256,7 @@ export async function requestAuthOtp(input: {
     expiresAt: new Date(expiresAtMs).toISOString(),
     code,
     whatsappDeepLink,
+    smsDeepLink,
     deliveryNote,
   };
 }

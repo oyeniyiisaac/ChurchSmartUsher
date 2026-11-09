@@ -375,6 +375,7 @@ export const typeDefs = `#graphql
     expiresAt: String!
     code: String!
     whatsappDeepLink: String
+    smsDeepLink: String
     deliveryNote: String!
   }
 

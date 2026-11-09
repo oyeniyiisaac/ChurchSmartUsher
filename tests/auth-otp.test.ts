@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import {
   OTP_RATE_LIMIT_WINDOW_MS,
   OTP_TTL_MS,
+  buildSmsVerificationLink,
   buildWhatsAppVerificationLink,
   getFallbackOtpMember,
   maskPhoneNumber,
@@ -27,7 +28,7 @@ describe("Instant Login and Forgot Password with Free WhatsApp / SMS OTP", () =>
     expect(maskPhoneNumber("123")).toBe("123");
   });
 
-  it("generates free WhatsApp direct link with prefilled verification code", () => {
+  it("generates free WhatsApp and SMS direct links with prefilled verification code", () => {
     const link = buildWhatsAppVerificationLink("+2348106096112", "789123", "LOGIN");
     expect(link).toContain("https://wa.me/2348106096112");
     expect(link).toContain("789123");
@@ -35,6 +36,10 @@ describe("Instant Login and Forgot Password with Free WhatsApp / SMS OTP", () =>
 
     const resetLink = buildWhatsAppVerificationLink("+2348106096112", "456789", "PASSWORD_RESET");
     expect(resetLink).toContain("Password%20Reset%20Code");
+
+    const smsLink = buildSmsVerificationLink("+2348106096112", "789123", "LOGIN");
+    expect(smsLink).toContain("sms:+2348106096112?body=");
+    expect(smsLink).toContain("789123");
   });
 
   it("requests an instant login code via WhatsApp and verifies it to create a session", async () => {
@@ -83,6 +88,9 @@ describe("Instant Login and Forgot Password with Free WhatsApp / SMS OTP", () =>
       purpose: "LOGIN",
       now,
     });
+
+    expect(dispatch.channel).toBe("SMS");
+    expect(dispatch.smsDeepLink).toContain("sms:+2348106096112");
 
     const pastExpiry = new Date(now.getTime() + OTP_TTL_MS + 5_000);
     await expect(
