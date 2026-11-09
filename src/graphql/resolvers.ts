@@ -50,6 +50,7 @@ import {
   type AttendanceReportsSummary,
   exportServiceAttendanceCsv,
   getAttendanceReports,
+  getGuestStreakSummary,
   getMyStreakSummary,
   type StreakSummary,
 } from "@/services/streak";
@@ -146,8 +147,10 @@ export const resolvers = {
       args: { serviceType?: ServiceType },
       context: GraphQLContext,
     ): Promise<StreakSummary> => {
-      const authenticated = requireRole(context.member ?? null, ["MEMBER", "USHER", "ADMIN"]);
-      return getMyStreakSummary(authenticated, args.serviceType ?? "SUNDAY");
+      if (!context.member) {
+        return getGuestStreakSummary(args.serviceType ?? "SUNDAY");
+      }
+      return getMyStreakSummary(context.member, args.serviceType ?? "SUNDAY");
     },
 
     departments: async (): Promise<DepartmentInfo[]> => {
