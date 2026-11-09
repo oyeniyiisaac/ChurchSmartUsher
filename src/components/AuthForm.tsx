@@ -250,11 +250,21 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
       if (res.data?.requestAuthOtp) {
         setOtpDispatchedInfo(res.data.requestAuthOtp);
-        setOtpCode(res.data.requestAuthOtp.code);
+        setOtpCode("");
         setOtpStep("VERIFY");
         setInfoMessage(
-          `Instant code ${res.data.requestAuthOtp.code} generated for ${res.data.requestAuthOtp.maskedPhone}. Auto-filled below!`,
+          `Instant code sent to your ${res.data.requestAuthOtp.channel === "WHATSAPP" ? "WhatsApp" : "messaging app"}. Copy the 6-digit code and paste it below.`,
         );
+        if (
+          res.data.requestAuthOtp.channel === "WHATSAPP" &&
+          res.data.requestAuthOtp.whatsappDeepLink
+        ) {
+          try {
+            window.open(res.data.requestAuthOtp.whatsappDeepLink, "_blank");
+          } catch {
+            // Popup blocked by browser; user can click the button
+          }
+        }
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to send instant login code.");
@@ -306,11 +316,21 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
 
       if (res.data?.requestAuthOtp) {
         setForgotDispatchedInfo(res.data.requestAuthOtp);
-        setForgotCode(res.data.requestAuthOtp.code);
+        setForgotCode("");
         setForgotStep("RESET");
         setInfoMessage(
-          `Password reset code ${res.data.requestAuthOtp.code} generated for ${res.data.requestAuthOtp.maskedPhone}. Auto-filled below!`,
+          `Password reset code sent to your ${res.data.requestAuthOtp.channel === "WHATSAPP" ? "WhatsApp" : "messaging app"}. Copy the 6-digit code and paste it below.`,
         );
+        if (
+          res.data.requestAuthOtp.channel === "WHATSAPP" &&
+          res.data.requestAuthOtp.whatsappDeepLink
+        ) {
+          try {
+            window.open(res.data.requestAuthOtp.whatsappDeepLink, "_blank");
+          } catch {
+            // Popup blocked by browser; user can click the button
+          }
+        }
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to send password reset code.");
@@ -924,86 +944,86 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                 ) : (
                   <div className="flex flex-col gap-4">
                     {forgotDispatchedInfo && (
-                      <div className="flex flex-col gap-2">
-                        {/* Prominent On-Screen OTP Box */}
-                        <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 shadow-sm">
-                          <div className="flex items-center gap-1.5 text-primary font-semibold text-xs uppercase tracking-wider">
-                            <span className="material-symbols-outlined text-[18px]">key</span>
-                            <span>Your Password Reset Code</span>
-                          </div>
-                          <div className="font-mono text-3xl sm:text-4xl font-extrabold tracking-[0.25em] text-primary bg-surface-container-lowest px-6 py-2 rounded-xl border border-primary/20 shadow-inner select-all">
-                            {forgotDispatchedInfo.code}
-                          </div>
-                          <p className="text-xs text-on-surface-variant">
-                            Generated for{" "}
-                            <span className="font-semibold text-on-surface">
-                              {forgotDispatchedInfo.maskedPhone}
+                      <div className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl flex flex-col gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-full bg-[#25D366]/20 text-[#128C7E] flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-[22px]">
+                              {forgotChannel === "WHATSAPP" ? "chat" : "sms"}
                             </span>
-                            . Auto-filled below!
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setForgotCode(forgotDispatchedInfo.code);
-                                setInfoMessage("Code auto-filled!");
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors flex items-center gap-1 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">
-                                touch_app
-                              </span>
-                              Auto-Fill ({forgotDispatchedInfo.code})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void navigator.clipboard?.writeText(forgotDispatchedInfo.code);
-                                setInfoMessage("Code copied to clipboard!");
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface text-xs font-medium hover:bg-surface-container transition-colors flex items-center gap-1 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">
-                                content_copy
-                              </span>
-                              Copy
-                            </button>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-body-md text-on-surface">
+                              Code sent to {forgotDispatchedInfo.maskedPhone}
+                            </p>
+                            <p className="text-xs text-on-surface-variant">
+                              Open your{" "}
+                              {forgotChannel === "WHATSAPP" ? "WhatsApp" : "SMS Messages app"}, copy
+                              the 6-digit code, and paste it below.
+                            </p>
                           </div>
                         </div>
 
-                        {/* Dispatch deep links */}
-                        <div className="flex flex-col gap-2 mt-1">
-                          {forgotDispatchedInfo.whatsappDeepLink && (
-                            <a
-                              href={forgotDispatchedInfo.whatsappDeepLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full h-10 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">chat</span>
-                              <span>Open Code in WhatsApp (Free)</span>
-                            </a>
-                          )}
-                          {forgotDispatchedInfo.smsDeepLink && (
-                            <a
-                              href={forgotDispatchedInfo.smsDeepLink}
-                              className="w-full h-10 rounded-lg bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">sms</span>
-                              <span>Open Code in Phone SMS Messages</span>
-                            </a>
-                          )}
-                        </div>
+                        {forgotDispatchedInfo.whatsappDeepLink && (
+                          <a
+                            href={forgotDispatchedInfo.whatsappDeepLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full h-11 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chat</span>
+                            <span>Open WhatsApp to Copy Code</span>
+                            <span className="material-symbols-outlined text-[16px]">
+                              open_in_new
+                            </span>
+                          </a>
+                        )}
+
+                        {forgotDispatchedInfo.smsDeepLink && (
+                          <a
+                            href={forgotDispatchedInfo.smsDeepLink}
+                            className="w-full h-11 rounded-xl bg-primary-container text-on-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">sms</span>
+                            <span>Open Messages App to Copy Code</span>
+                            <span className="material-symbols-outlined text-[16px]">
+                              open_in_new
+                            </span>
+                          </a>
+                        )}
                       </div>
                     )}
 
                     <div className="flex flex-col gap-1.5">
-                      <label
-                        className="font-label-md text-label-md text-on-surface-variant"
-                        htmlFor="reset-code"
-                      >
-                        6-Digit Reset Code
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label
+                          className="font-label-md text-label-md text-on-surface-variant"
+                          htmlFor="reset-code"
+                        >
+                          6-Digit Reset Code (from{" "}
+                          {forgotChannel === "WHATSAPP" ? "WhatsApp" : "SMS"})
+                        </label>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const text = await navigator.clipboard.readText();
+                              const digits = text.replace(/[^\d]/g, "").slice(0, 6);
+                              if (digits) {
+                                setForgotCode(digits);
+                                setInfoMessage("Code pasted from clipboard!");
+                              }
+                            } catch {
+                              // Clipboard permission
+                            }
+                          }}
+                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">
+                            content_paste
+                          </span>
+                          <span>Paste Code</span>
+                        </button>
+                      </div>
                       <input
                         id="reset-code"
                         type="text"
@@ -1267,86 +1287,86 @@ export function AuthForm({ mode }: AuthFormProps): ReactNode {
                   ) : (
                     <div className="flex flex-col gap-3">
                       {otpDispatchedInfo && (
-                        <div className="flex flex-col gap-2">
-                          {/* Prominent On-Screen OTP Box */}
-                          <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 shadow-sm my-1">
-                            <div className="flex items-center gap-1.5 text-primary font-semibold text-xs uppercase tracking-wider">
-                              <span className="material-symbols-outlined text-[18px]">key</span>
-                              <span>Your Instant Login OTP Code</span>
-                            </div>
-                            <div className="font-mono text-3xl sm:text-4xl font-extrabold tracking-[0.25em] text-primary bg-surface-container-lowest px-6 py-2.5 rounded-xl border border-primary/20 shadow-inner select-all">
-                              {otpDispatchedInfo.code}
-                            </div>
-                            <p className="text-xs text-on-surface-variant">
-                              Generated for{" "}
-                              <span className="font-semibold text-on-surface">
-                                {otpDispatchedInfo.maskedPhone}
+                        <div className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl flex flex-col gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-10 h-10 rounded-full bg-[#25D366]/20 text-[#128C7E] flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[22px]">
+                                {otpChannel === "WHATSAPP" ? "chat" : "sms"}
                               </span>
-                              . Auto-filled below!
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOtpCode(otpDispatchedInfo.code);
-                                  setInfoMessage("Code auto-filled!");
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors flex items-center gap-1 cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[15px]">
-                                  touch_app
-                                </span>
-                                Auto-Fill ({otpDispatchedInfo.code})
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void navigator.clipboard?.writeText(otpDispatchedInfo.code);
-                                  setInfoMessage("Code copied to clipboard!");
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface text-xs font-medium hover:bg-surface-container transition-colors flex items-center gap-1 cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[15px]">
-                                  content_copy
-                                </span>
-                                Copy Code
-                              </button>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-body-md text-on-surface">
+                                Code sent to {otpDispatchedInfo.maskedPhone}
+                              </p>
+                              <p className="text-xs text-on-surface-variant">
+                                Open your{" "}
+                                {otpChannel === "WHATSAPP" ? "WhatsApp" : "SMS Messages app"}, copy
+                                the 6-digit code, and paste it below.
+                              </p>
                             </div>
                           </div>
 
-                          {/* Direct Mobile Links */}
-                          <div className="flex flex-col gap-2 mt-1">
-                            {otpDispatchedInfo.whatsappDeepLink && (
-                              <a
-                                href={otpDispatchedInfo.whatsappDeepLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full h-11 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">chat</span>
-                                <span>Open Code in WhatsApp (Free)</span>
-                              </a>
-                            )}
-                            {otpDispatchedInfo.smsDeepLink && (
-                              <a
-                                href={otpDispatchedInfo.smsDeepLink}
-                                className="w-full h-11 rounded-lg bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">sms</span>
-                                <span>Open in Phone SMS Messages</span>
-                              </a>
-                            )}
-                          </div>
+                          {otpDispatchedInfo.whatsappDeepLink && (
+                            <a
+                              href={otpDispatchedInfo.whatsappDeepLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full h-11 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chat</span>
+                              <span>Open WhatsApp to Copy Code</span>
+                              <span className="material-symbols-outlined text-[16px]">
+                                open_in_new
+                              </span>
+                            </a>
+                          )}
+
+                          {otpDispatchedInfo.smsDeepLink && (
+                            <a
+                              href={otpDispatchedInfo.smsDeepLink}
+                              className="w-full h-11 rounded-xl bg-primary-container text-on-primary font-label-md text-label-md shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">sms</span>
+                              <span>Open Messages App to Copy Code</span>
+                              <span className="material-symbols-outlined text-[16px]">
+                                open_in_new
+                              </span>
+                            </a>
+                          )}
                         </div>
                       )}
 
                       <div className="flex flex-col gap-1.5">
-                        <label
-                          className="font-label-md text-label-md text-on-surface-variant"
-                          htmlFor="otp-input"
-                        >
-                          Enter 6-Digit Instant Code
-                        </label>
+                        <div className="flex items-center justify-between">
+                          <label
+                            className="font-label-md text-label-md text-on-surface-variant"
+                            htmlFor="otp-input"
+                          >
+                            Enter 6-Digit Code (from{" "}
+                            {otpChannel === "WHATSAPP" ? "WhatsApp" : "SMS"})
+                          </label>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const text = await navigator.clipboard.readText();
+                                const digits = text.replace(/[^\d]/g, "").slice(0, 6);
+                                if (digits) {
+                                  setOtpCode(digits);
+                                  setInfoMessage("Code pasted from clipboard!");
+                                }
+                              } catch {
+                                // Clipboard permission prompt or unavailable
+                              }
+                            }}
+                            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">
+                              content_paste
+                            </span>
+                            <span>Paste Code</span>
+                          </button>
+                        </div>
                         <input
                           id="otp-input"
                           type="text"
